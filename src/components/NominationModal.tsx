@@ -12,9 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Employee, AwardType } from "@/types/employee";
 import { Star, Send, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { awardCategories } from "@/data/mockData";
 import * as LucideIcons from "lucide-react";
-import { auth, nominationStorage } from "@/lib/localStorage";
+import { auth, nominationStorage, awardStorage } from "@/lib/localStorage";
 
 interface NominationModalProps {
   isOpen: boolean;
@@ -29,12 +28,10 @@ export const NominationModal = ({
   employee,
   awardType,
 }: NominationModalProps) => {
-  // Rating is now fixed at 5
   const rating = 5; 
   const [comment, setComment] = useState("");
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false);
 
-  // Check for existing vote whenever the modal opens or awardType changes
   useEffect(() => {
     if (isOpen && awardType) {
       const user = auth.getCurrentUser();
@@ -47,10 +44,14 @@ export const NominationModal = ({
 
   if (!employee || !awardType) return null;
 
-  const category = awardCategories.find((c) => c.type === awardType);
-  const IconComponent = category
+  // Dynamic fetch instead of mockData
+  const systemAwards = awardStorage.getAwards();
+  const category = systemAwards.find((c) => c.type === awardType);
+  
+  // Safe fallback if icon doesn't exist dynamically
+  const IconComponent = category && category.icon
     ? (LucideIcons[category.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>)
-    : null;
+    : (LucideIcons.Award as React.ComponentType<{ className?: string }>);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,13 +63,11 @@ export const NominationModal = ({
       return;
     }
 
-    // Double check strictly on submit
     if (nominationStorage.hasUserNominatedForAward(user.id, awardType)) {
       toast.error(`You have already cast a vote for ${awardType}`);
       return;
     }
 
-    // Save nomination (Rating is always 5)
     nominationStorage.addNomination(
       employee.id,
       user.id,
@@ -90,10 +89,10 @@ export const NominationModal = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            {IconComponent && category && (
+            {IconComponent && (
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: category.color }}
+                style={{ backgroundColor: category?.color || "#f59e0b" }}
               >
                 <IconComponent className="w-6 h-6 text-white" />
               </div>
@@ -106,7 +105,6 @@ export const NominationModal = ({
         </DialogHeader>
 
         {hasAlreadyVoted ? (
-          // RESTRICTED VIEW: If they have already voted
           <div className="py-8 flex flex-col items-center text-center space-y-4">
              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                <Lock className="w-8 h-8 text-gray-400" />
@@ -122,10 +120,8 @@ export const NominationModal = ({
              </Button>
           </div>
         ) : (
-          // NORMAL FORM VIEW
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Visual Rating Display (Fixed) */}
             <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 flex flex-col items-center justify-center space-y-2">
               <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
                 Recognition Level
@@ -143,7 +139,6 @@ export const NominationModal = ({
               </p>
             </div>
 
-            {/* Comment */}
             <div className="space-y-2">
               <Label htmlFor="comment">Why do they deserve this?</Label>
               <Textarea

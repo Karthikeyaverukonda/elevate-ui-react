@@ -1,20 +1,20 @@
 import { Employee, Badge, AwardType } from "@/types/employee";
 
-// VERSION UPDATE: _v76 (Clean slate for the new Admin approval workflow)
+// VERSION UPDATE: _v77 (Global Centralized Awards for Admins)
 export const STORAGE_KEYS = {
-  USERS: "sprintwise_users_v76",
-  SESSIONS: "sprintwise_sessions_v76", 
-  ACTIVE_TAB_ROLE: "sprintwise_active_tab_role_v76", 
-  EMPLOYEES: "sprintwise_employees_v76",
-  NOMINATIONS: "sprintwise_nominations_v76",
-  SPRINTS: "sprintwise_sprints_v76",
-  ARTS: "sprintwise_arts_v76",
-  TEAMS: "sprintwise_teams_v76",
-  NOTIFICATIONS: "sprintwise_notifications_v76",
-  AWARDS: "sprintwise_awards_v76",
+  USERS: "sprintwise_users_v77",
+  SESSIONS: "sprintwise_sessions_v77", 
+  ACTIVE_TAB_ROLE: "sprintwise_active_tab_role_v77", 
+  EMPLOYEES: "sprintwise_employees_v77",
+  NOMINATIONS: "sprintwise_nominations_v77",
+  SPRINTS: "sprintwise_sprints_v77",
+  ARTS: "sprintwise_arts_v77",
+  TEAMS: "sprintwise_teams_v77",
+  NOTIFICATIONS: "sprintwise_notifications_v77",
+  AWARDS: "sprintwise_awards_v77",
 };
 
-const TAB_USER_KEY = "sprintwise_tab_user_v76";
+const TAB_USER_KEY = "sprintwise_tab_user_v77";
 
 const BASE_VOTE_VALUE = 50; 
 const SCALING_FACTOR = 3.0;
@@ -64,7 +64,6 @@ export interface StoredAward {
     icon: string;
     color?: string;
     points?: number;
-    managerId?: string; 
 }
 
 export interface ART {
@@ -104,15 +103,15 @@ const DUMMY_PROFILES = [
   { f: "Henry", l: "Martin", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face" }
 ];
 
-const getBaseAwards = (managerId: string): StoredAward[] => [
-    { id: `aw_1_${managerId}`, type: "Culture Champion", icon: "Heart", color: "#e11d48", description: "Promoting positive team culture", points: 50, managerId },
-    { id: `aw_2_${managerId}`, type: "Bug Slayer", icon: "Sword", color: "#dc2626", description: "Fixing critical issues", points: 30, managerId },
-    { id: `aw_3_${managerId}`, type: "Team Player", icon: "Users", color: "#2563eb", description: "Helping others succeed", points: 40, managerId },
-    { id: `aw_4_${managerId}`, type: "Innovator", icon: "Lightbulb", color: "#d97706", description: "Creative solutions", points: 60, managerId },
-    { id: `aw_5_${managerId}`, type: "Customer Hero", icon: "Smile", color: "#059669", description: "Going above and beyond for clients", points: 50, managerId },
-    { id: `aw_6_${managerId}`, type: "Early Bird", icon: "Sunrise", color: "#f59e0b", description: "First to start, always prepared", points: 20, managerId },
-    { id: `aw_7_${managerId}`, type: "Night Owl", icon: "Moon", color: "#4338ca", description: "Dedication beyond standard hours", points: 20, managerId },
-    { id: `aw_8_${managerId}`, type: "Code Wizard", icon: "Wand2", color: "#7c3aed", description: "Exceptional technical problem solving", points: 45, managerId },
+const getBaseAwards = (): StoredAward[] => [
+    { id: `aw_1_global`, type: "Culture Champion", icon: "Heart", color: "#e11d48", description: "Promoting positive team culture", points: 50 },
+    { id: `aw_2_global`, type: "Bug Slayer", icon: "Sword", color: "#dc2626", description: "Fixing critical issues", points: 30 },
+    { id: `aw_3_global`, type: "Team Player", icon: "Users", color: "#2563eb", description: "Helping others succeed", points: 40 },
+    { id: `aw_4_global`, type: "Innovator", icon: "Lightbulb", color: "#d97706", description: "Creative solutions", points: 60 },
+    { id: `aw_5_global`, type: "Customer Hero", icon: "Smile", color: "#059669", description: "Going above and beyond for clients", points: 50 },
+    { id: `aw_6_global`, type: "Early Bird", icon: "Sunrise", color: "#f59e0b", description: "First to start, always prepared", points: 20 },
+    { id: `aw_7_global`, type: "Night Owl", icon: "Moon", color: "#4338ca", description: "Dedication beyond standard hours", points: 20 },
+    { id: `aw_8_global`, type: "Code Wizard", icon: "Wand2", color: "#7c3aed", description: "Exceptional technical problem solving", points: 45 },
 ];
 
 const initializeDefaults = () => {
@@ -476,28 +475,32 @@ export const sprintStorage = {
   }
 };
 
+// FIXED: Award storage is now entirely Global for the Admin
 export const awardStorage = {
-  getAwards: (managerId?: string) => {
+  getAwards: () => {
       const a = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
-      if (!managerId) return a;
-      
-      let myAwards = a.filter(x => x.managerId === managerId);
-      
-      if (myAwards.length === 0) {
-          const newAwards = getBaseAwards(managerId);
-          a.push(...newAwards);
-          setAndSync(STORAGE_KEYS.AWARDS, a);
-          myAwards = newAwards;
+      if (a.length === 0) {
+          const newAwards = getBaseAwards();
+          setAndSync(STORAGE_KEYS.AWARDS, newAwards);
+          return newAwards;
       }
-      
-      return myAwards;
+      return a;
   },
-  addAward: (type: string, description: string = "Special Recognition", managerId: string) => {
+  addAward: (type: string, description: string = "Special Recognition") => {
     const a = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
     const colors = ["#8b5cf6", "#14b8a6", "#f43f5e", "#0ea5e9", "#f59e0b"]; 
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    a.push({ id: `aw_${Date.now()}`, type, description, icon: "Star", color: randomColor, points: 50, managerId });
+    a.push({ id: `aw_${Date.now()}`, type, description, icon: "Award", color: randomColor, points: 50 });
     setAndSync(STORAGE_KEYS.AWARDS, a);
+  },
+  updateAward: (id: string, type: string, description: string) => {
+    const a = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
+    const idx = a.findIndex(x => x.id === id);
+    if (idx !== -1) {
+        a[idx].type = type;
+        a[idx].description = description;
+        setAndSync(STORAGE_KEYS.AWARDS, a);
+    }
   },
   deleteAward: (id: string) => {
     const a = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []).filter(x => x.id !== id);

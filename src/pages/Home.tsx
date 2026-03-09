@@ -102,7 +102,6 @@ const Home = () => {
     }
   }, [currentUser]);
 
-  // Handle direct image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -129,7 +128,6 @@ const Home = () => {
             ctx?.drawImage(img, 0, 0, width, height);
             const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
 
-            // Save to localStorage directly
             const allEmployees = JSON.parse(localStorage.getItem(STORAGE_KEYS.EMPLOYEES) || "[]");
             const idx = allEmployees.findIndex((emp: any) => emp.id === currentUser?.id);
             
@@ -137,7 +135,7 @@ const Home = () => {
                 allEmployees[idx].profilePicture = dataUrl;
                 localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(allEmployees));
                 toast.success("Profile picture updated!");
-                fetchData(); // Refresh UI
+                fetchData(); 
             } else {
                 toast.error("Could not find employee record.");
             }
@@ -161,6 +159,9 @@ const Home = () => {
   const fetchData = () => {
     if (!currentUser) return; 
 
+    // FIXED: Awards are now completely global, fetched identically for everyone!
+    setSystemAwards(awardStorage.getAwards());
+    
     let targetManagerId = undefined;
     if (currentUser.role === 'employee' && currentUser.artId) {
         const art = getARTById(currentUser.artId);
@@ -168,8 +169,6 @@ const Home = () => {
     } else if (currentUser.role === 'art-manager') {
         targetManagerId = currentUser.id;
     }
-
-    setSystemAwards(awardStorage.getAwards(targetManagerId));
     
     const sprints = sprintStorage.getSprints(targetManagerId);
     const currentSprint = sprints.find(s => s.status === 'active') || sprints[sprints.length - 1];
@@ -417,7 +416,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/50 relative overflow-hidden">
-      {/* Hidden File Input for Avatar Upload */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -434,7 +432,6 @@ const Home = () => {
           </div>
           <div className="flex items-center gap-4">
             
-            {/* Clickable Profile Menu mapping strictly to Picture Upload */}
             <div 
               className="flex items-center gap-3 p-1.5 rounded-full pr-4 cursor-pointer hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group"
               onClick={() => fileInputRef.current?.click()}
@@ -464,9 +461,8 @@ const Home = () => {
             <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xl shadow-indigo-500/20">
                <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-center md:items-start gap-6">
                  
-                 {/* Clickable Main Avatar */}
                  <div 
-                    className="relative w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border-2 border-white/30 overflow-hidden cursor-pointer group"
+                    className="relative w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border-2 border-white/30 overflow-hidden cursor-pointer group shrink-0"
                     onClick={() => fileInputRef.current?.click()}
                     title="Change Profile Picture"
                  >
@@ -489,7 +485,6 @@ const Home = () => {
               </div>
             </section>
 
-            {/* VIEW SEGREGATION: EMPLOYEE */}
             {isEmployee && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                  <div className="lg:col-span-2 space-y-8">
@@ -525,8 +520,6 @@ const Home = () => {
                           <Activity className="w-4 h-4 text-indigo-500" /> Organizational Pulse
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-slate-100">
-                          
-                          {/* Puls Item 1 */}
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
                             <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.users}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Users className="w-3 h-3"/> Active Users</div>
@@ -534,8 +527,6 @@ const Home = () => {
                                Total registered employees
                             </div>
                           </div>
-
-                          {/* Puls Item 2 */}
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
                             <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.arts}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Map className="w-3 h-3"/> Active ARTs</div>
@@ -543,8 +534,6 @@ const Home = () => {
                                Total active Release Trains
                             </div>
                           </div>
-
-                          {/* Puls Item 3 */}
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
                             <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.teams}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Briefcase className="w-3 h-3"/> Total Teams</div>
@@ -552,8 +541,6 @@ const Home = () => {
                                Total registered teams
                             </div>
                           </div>
-
-                          {/* Puls Item 4 */}
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
                             <div className="text-2xl font-bold text-emerald-600 group-hover:text-emerald-500 transition-colors">High</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Zap className="w-3 h-3"/> Engagement</div>
@@ -561,13 +548,11 @@ const Home = () => {
                                Current platform activity level
                             </div>
                           </div>
-
                         </div>
                      </div>
                  </div>
 
                  <div className="lg:col-span-1 space-y-8">
-                     
                      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
                        <div className="flex items-center justify-between mb-4">
                          <h3 className="font-bold text-gray-900 flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-500" /> Top Performers</h3>

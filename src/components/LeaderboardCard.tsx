@@ -3,8 +3,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Employee, Badge as BadgeType } from "@/types/employee";
 import { Star } from "lucide-react";
-import { awardCategories } from "@/data/mockData";
 import * as LucideIcons from "lucide-react";
+import { awardStorage } from "@/lib/localStorage";
 
 interface LeaderboardCardProps {
   employee: Employee;
@@ -12,9 +12,9 @@ interface LeaderboardCardProps {
   onBadgeClick: (badge: BadgeType, employeeId: string) => void;
 }
 
-// NOTICE: We use 'export const' here, NOT 'export default'
 export const LeaderboardCard = ({ employee, rank, onBadgeClick }: LeaderboardCardProps) => {
   const isTopThree = rank <= 3;
+  const systemAwards = awardStorage.getAwards(); // Dynamically fetch
 
   return (
     <Card className={`hover-lift overflow-hidden transition-all duration-300 ${isTopThree ? "border-primary/50 shadow-lg" : "border-slate-200"}`}>
@@ -54,10 +54,10 @@ export const LeaderboardCard = ({ employee, rank, onBadgeClick }: LeaderboardCar
       {employee.badges.length > 0 && (
         <div className="px-4 sm:px-6 pb-4 flex flex-wrap gap-2">
           {employee.badges.map((badge) => {
-            const category = awardCategories.find((c) => c.type === badge.type);
-            const IconComponent = category
+            const category = systemAwards.find((c) => c.type === badge.type);
+            const IconComponent = category && category.icon
               ? (LucideIcons[category.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>)
-              : null;
+              : (LucideIcons.Award as React.ComponentType<{ className?: string }>);
 
             return (
               <button
@@ -65,8 +65,8 @@ export const LeaderboardCard = ({ employee, rank, onBadgeClick }: LeaderboardCar
                 onClick={() => onBadgeClick(badge, employee.id)}
                 className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-medium transition-colors hover:bg-slate-50"
                 style={{
-                  borderColor: category?.color ? `${category.color}40` : undefined,
-                  color: category?.color,
+                  borderColor: category?.color ? `${category.color}40` : "#f59e0b40",
+                  color: category?.color || "#f59e0b",
                 }}
               >
                 {IconComponent && <IconComponent className="w-3 h-3" />}

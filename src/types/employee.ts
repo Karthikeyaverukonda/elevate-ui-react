@@ -1,14 +1,4 @@
-// Please verify this list matches your existing award categories exactly.
-// If you had custom awards, add them here.
-export type AwardType = 
-  | "Culture Champion"
-  | "Bug Slayer"
-  | "Team Player"
-  | "Innovator"
-  | "Customer Hero"
-  | "Early Bird"
-  | "Night Owl"
-  | "Code Wizard";
+export type AwardType = string;
 
 export interface Badge {
   id: string;
@@ -25,7 +15,7 @@ export interface Employee {
   id: string;
   name: string;
   jobTitle: string;
-  department: string; // This field is required for the new Fairness Logic
+  department: string; 
   profilePicture: string;
   badges: Badge[];
   totalScore: number;
