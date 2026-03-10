@@ -308,7 +308,7 @@ const AdminDashboard = () => {
                                     <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Total Employees</p>
                                 </div>
                                 <h3 className="text-5xl font-black text-slate-800 drop-shadow-sm">3,204</h3>
-                                <p className="text-sm text-slate-500 mt-2 font-medium flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Synced from backend</p>
+                                <p className="text-sm text-slate-500 mt-2 font-medium flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Synced up to date</p>
                             </CardContent>
                         </Card>
 
@@ -324,7 +324,7 @@ const AdminDashboard = () => {
                                     <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Nominations</p>
                                 </div>
                                 <h3 className="text-5xl font-black text-slate-800 drop-shadow-sm">1,204</h3>
-                                <p className="text-sm text-slate-500 mt-2 font-medium flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Synced from backend</p>
+                                <p className="text-sm text-slate-500 mt-2 font-medium flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Synced up to date</p>
                             </CardContent>
                         </Card>
                     </div>
