@@ -236,7 +236,6 @@ const Login = () => {
   );
 };
 
-// Fix React warning regarding Clock icon by adding a quick import above
 import { Clock as ClockIcon } from 'lucide-react';
 const FixedLogin = () => {
     return <Login />
