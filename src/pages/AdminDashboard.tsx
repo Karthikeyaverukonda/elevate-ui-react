@@ -50,12 +50,32 @@ const AdminDashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(() => {
-    setPendingRequests(adminActions.getPendingRequests());
+    fetch('http://127.0.0.1:8000/api/admin-dashboard/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Signup failed');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Fetched admin dashboard data:", data);
+          });
+          
+        }
+        setPendingRequests(adminActions.getPendingRequests());
     setAllUsers(adminActions.getAllUsers());
     setAllArts(artManagerActions.getARTs());
     setAwards(awardStorage.getAwards());
   }, []);
-
+    );
+        
   useEffect(() => {
     const user = auth.getCurrentUser('admin'); 
     if (!user || user.role !== 'admin') {
@@ -246,7 +266,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 group-hover:text-[#0A1128] transition-colors">Total Users</p>
-                                        <h3 className="text-4xl font-extrabold text-slate-900">450</h3>
+                                        <h3 className="text-4xl font-extrabold text-slate-900">500</h3>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0A1128]/5 group-hover:text-[#0A1128] transition-all border border-slate-100/50">
                                         <Users className="w-7 h-7" />
