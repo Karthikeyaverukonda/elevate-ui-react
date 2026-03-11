@@ -3,13 +3,31 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Users, Shield, Check, X, Clock, Database, Briefcase, Award, LogOut, RefreshCw, Camera, Plus, Edit, Trash2, LayoutDashboard, Search, ChevronRight, Zap, Crown, Settings, Target, Map, Network, Trophy } from "lucide-react";
+import { Users, Shield, Check, X, Clock, Database, Briefcase, Award, LogOut, RefreshCw, Camera, Plus, Edit, Trash2, LayoutDashboard, Search, ChevronRight, Zap, Crown, Settings, Target, Map, Network, Trophy, User } from "lucide-react";
 import { auth, adminActions, artManagerActions, awardStorage, StoredUser, STORAGE_KEYS, userActions, ART, StoredAward } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 type DashboardTab = 'overview' | 'requests' | 'directory' | 'awards';
 type DirectoryView = 'art-manager' | 'admin';
+
+// Robust helper to extract a human name, regardless of how they signed up
+const getDisplayName = (u: any) => {
+    if (!u) return 'Unknown User';
+    // Fallback for older data structures
+    if (u.name && !u.firstName) return u.name;
+    
+    const first = u.firstName || '';
+    const last = u.lastName || '';
+    const combined = `${first} ${last}`.trim();
+    if (!combined) return 'Unknown User';
+    
+    // Mask the confusing dummy data names so they look like real humans
+    if (combined.toLowerCase() === 'system admin') return 'Alice (Admin)';
+    if (combined.toLowerCase() === 'tech lead') return 'Bob (Manager)';
+    
+    return combined;
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -119,8 +137,7 @@ const AdminDashboard = () => {
 
   const registeredSystemUsers = allUsers.filter(u => u.status !== 'pending' && u.role === directoryView);
   const filteredDirectory = registeredSystemUsers.filter(u => 
-      u.firstName.toLowerCase().includes(directorySearch.toLowerCase()) || 
-      u.lastName.toLowerCase().includes(directorySearch.toLowerCase())
+      getDisplayName(u).toLowerCase().includes(directorySearch.toLowerCase())
   );
   const filteredAwards = awards.filter(a => 
       a.type.toLowerCase().includes(awardSearch.toLowerCase()) || 
@@ -135,7 +152,7 @@ const AdminDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-8 space-y-6">
         
-        {/* HEADER SECTION - Clean White Embossed Style */}
+        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
             <div className="flex items-center gap-6 w-full md:w-auto">
                 <div 
@@ -147,7 +164,7 @@ const AdminDashboard = () => {
                         {currentUser?.profilePicture ? (
                             <img src={currentUser.profilePicture} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                            currentUser?.firstName?.charAt(0) || 'A'
+                            getDisplayName(currentUser).charAt(0).toUpperCase()
                         )}
                     </div>
                     <div className="absolute -bottom-1 -right-1 bg-[#0A1128] p-1.5 rounded-full shadow-md text-white opacity-0 group-hover:opacity-100 transition-opacity">
@@ -158,7 +175,7 @@ const AdminDashboard = () => {
                 <div className="flex-1">
                     <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Admin Console</h2>
                     <p className="text-slate-500 text-sm mt-1 font-medium">
-                        Welcome back, <span className="text-slate-700 font-bold">{currentUser?.firstName}</span>. Oversee platform health and system settings.
+                        Welcome back, <span className="text-slate-700 font-bold">{getDisplayName(currentUser)}</span>. Oversee platform health and system settings.
                     </p>
                 </div>
             </div>
@@ -219,7 +236,7 @@ const AdminDashboard = () => {
                         </Card>
                     )}
 
-                    {/* NEAT STATS GRID (Dummy Data) */}
+                    {/* NEAT STATS GRID */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <Card className="border border-slate-200 shadow-sm rounded-3xl bg-white hover:border-[#0A1128]/30 hover:shadow-md transition-all cursor-pointer relative overflow-hidden group" onClick={() => setActiveTab('directory')}>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
@@ -281,7 +298,6 @@ const AdminDashboard = () => {
                             </CardContent>
                         </Card>
 
-                        {/* REMOVED onClick REDIRECT HERE */}
                         <Card className="border border-slate-200 shadow-sm rounded-3xl bg-white hover:border-[#0A1128]/30 hover:shadow-md transition-all relative overflow-hidden group">
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
                                 <Trophy className="w-32 h-32 text-slate-900 animate-float-reverse" />
@@ -371,13 +387,13 @@ const AdminDashboard = () => {
                     <Card className="border border-slate-200 shadow-sm rounded-2xl overflow-hidden bg-white">
                         <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-6 sm:px-8">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div>
+                                <div className="mb-2 sm:mb-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Clock className="w-5 h-5 text-slate-500" />
                                         <CardTitle className="text-xl font-bold text-slate-900">Pending Access Requests</CardTitle>
                                     </div>
                                     <CardDescription className="text-sm font-medium text-slate-500">
-                                        Review and approve access requests for new System Administrators and ART Managers.
+                                        Review and securely approve access requests for new System Administrators and ART Managers.
                                     </CardDescription>
                                 </div>
                                 {pendingRequests.length > 0 && (
@@ -398,17 +414,19 @@ const AdminDashboard = () => {
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-100">
-                                    {pendingRequests.map(req => (
-                                        <div key={req.id} className="p-6 px-6 sm:px-8 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 hover:bg-slate-50 transition-colors">
+                                    {pendingRequests.map((req, index) => {
+                                        const displayName = getDisplayName(req);
+                                        return (
+                                        <div key={`${req.id}-${index}`} className="p-6 px-6 sm:px-8 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 hover:bg-slate-50 transition-colors">
                                             <div className="flex items-center gap-4 min-w-[250px]">
-                                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-lg border border-slate-200">
-                                                    {req.firstName.charAt(0)}{req.lastName.charAt(0)}
+                                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-lg border border-slate-200 uppercase">
+                                                    {displayName.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-900 text-lg">{req.firstName} {req.lastName}</p>
+                                                    <p className="font-bold text-slate-900 text-lg">{displayName}</p>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <Badge variant="outline" className={`font-semibold bg-slate-50 ${req.role === 'admin' ? 'text-purple-700' : 'text-[#0A1128]'}`}>
-                                                            {req.role === 'admin' ? 'System Admin' : 'ART Manager'}
+                                                            {req.role === 'admin' ? 'System Admin' : 'Train Manager'}
                                                         </Badge>
                                                         <span className="text-xs text-slate-500">
                                                             Requested: {new Date(req.createdAt).toLocaleDateString()}
@@ -417,9 +435,9 @@ const AdminDashboard = () => {
                                                 </div>
                                             </div>
                                             <div className="flex-1 text-sm text-slate-500 px-4 py-2 border-l border-slate-200 font-medium">
-                                                {req.role === 'admin' 
-                                                    ? "User is requesting administrative oversight." 
-                                                    : "User will configure their ART and Department upon first login."
+                                                <span className="text-slate-700 font-bold">{displayName}</span> {req.role === 'admin' 
+                                                    ? "is requesting full administrative system oversight." 
+                                                    : "is requesting access and will configure their ART and Department upon first login."
                                                 }
                                             </div>
                                             <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
@@ -431,7 +449,7 @@ const AdminDashboard = () => {
                                                 </Button>
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             )}
                         </CardContent>
@@ -460,7 +478,7 @@ const AdminDashboard = () => {
                                             className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'art-manager' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
                                             onClick={() => setDirectoryView('art-manager')}
                                         >
-                                            ART Managers
+                                            Train Managers
                                         </button>
                                         <button 
                                             className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'admin' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
@@ -488,22 +506,23 @@ const AdminDashboard = () => {
                                 <div className="col-span-3 md:col-span-3 text-right">System Status</div>
                             </div>
                             <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                                {filteredDirectory.map(user => {
+                                {filteredDirectory.map((user, index) => {
                                     const managerArt = allArts.find(a => a.managerId === user.id);
                                     const isAdmin = user.role === 'admin';
+                                    const displayName = getDisplayName(user);
                                     
                                     return (
-                                        <div key={user.id} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                        <div key={`${user.id}-${index}`} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                             <div className="col-span-5 md:col-span-4 font-semibold text-slate-900 flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm shrink-0 overflow-hidden border bg-slate-50 border-slate-200 text-slate-700`}>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm shrink-0 overflow-hidden border bg-slate-50 border-slate-200 text-slate-700 uppercase`}>
                                                     {user.profilePicture ? (
                                                         <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <span>{user.firstName.charAt(0)}{user.lastName.charAt(0)}</span>
+                                                        <span>{displayName.charAt(0)}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="truncate pr-1 text-sm font-bold">{user.firstName} {user.lastName}</span>
+                                                    <span className="truncate pr-1 text-sm font-bold">{displayName}</span>
                                                     {user.createdBy === 'system_dummy' && <span className="text-[10px] text-slate-400 font-medium">Test Account</span>}
                                                 </div>
                                             </div>
@@ -516,11 +535,11 @@ const AdminDashboard = () => {
                                                 ) : managerArt ? (
                                                     <>
                                                       <span className="font-semibold text-[#0A1128] flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5"/> {managerArt.name}</span>
-                                                      <span className="text-xs text-slate-500 mt-0.5 truncate">ART Manager • {managerArt.department}</span>
+                                                      <span className="text-xs text-slate-500 mt-0.5 truncate">Train Manager • {managerArt.department}</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                      <span className="font-semibold text-slate-700 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5"/> ART Manager</span>
+                                                      <span className="font-semibold text-slate-700 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5"/> Train Manager</span>
                                                       <span className="text-xs text-slate-400 mt-0.5 italic">Awaiting ART Configuration</span>
                                                     </>
                                                 )}
@@ -539,7 +558,7 @@ const AdminDashboard = () => {
                                 })}
                                 {filteredDirectory.length === 0 && (
                                     <div className="text-center py-20 text-slate-500 text-sm font-medium">
-                                        No {directoryView === 'admin' ? 'Administrators' : 'ART Managers'} found.
+                                        No {directoryView === 'admin' ? 'Administrators' : 'Train Managers'} found.
                                     </div>
                                 )}
                             </div>
@@ -589,8 +608,8 @@ const AdminDashboard = () => {
                                 <div className="col-span-3 text-right">Actions</div>
                             </div>
                             <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                                {filteredAwards.map(aw => (
-                                    <div key={aw.id} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                {filteredAwards.map((aw, index) => (
+                                    <div key={`${aw.id}-${index}`} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                         <div className="col-span-4 font-semibold flex items-center gap-3 text-slate-900 pr-4">
                                             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-black/5 shadow-sm" style={{ backgroundColor: aw.color }}>
                                                 <Award className="w-5 h-5 text-white" />

@@ -1,19 +1,10 @@
 import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Employee, AwardType } from "@/types/employee";
-import { Star, Send, Lock } from "lucide-react";
+import { auth, nominationStorage, sprintStorage } from "@/lib/localStorage";
 import { toast } from "sonner";
-import * as LucideIcons from "lucide-react";
-import { auth, nominationStorage, awardStorage } from "@/lib/localStorage";
+import { Employee, AwardType } from "@/types/employee";
+import { X, Send, AlertTriangle, Info, Ban } from "lucide-react";
 
 interface NominationModalProps {
   isOpen: boolean;
@@ -22,147 +13,141 @@ interface NominationModalProps {
   awardType: AwardType | null;
 }
 
-export const NominationModal = ({
-  isOpen,
-  onClose,
-  employee,
-  awardType,
-}: NominationModalProps) => {
-  const rating = 5; 
+export const NominationModal = ({ isOpen, onClose, employee, awardType }: NominationModalProps) => {
   const [comment, setComment] = useState("");
-  const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentUser = auth.getCurrentUser();
 
+  // Reset state on open
   useEffect(() => {
-    if (isOpen && awardType) {
-      const user = auth.getCurrentUser();
-      if (user) {
-        const alreadyVoted = nominationStorage.hasUserNominatedForAward(user.id, awardType);
-        setHasAlreadyVoted(alreadyVoted);
-      }
+    if (isOpen) {
+      setComment("");
+      setIsSubmitting(false);
     }
-  }, [isOpen, awardType]);
+  }, [isOpen]);
 
-  if (!employee || !awardType) return null;
+  // 1. Calculate Sprint Constraints
+  const sprints = sprintStorage.getSprints();
+  const activeSprint = sprints.find(s => s.status === 'active');
+  const allNoms = nominationStorage.getNominations();
 
-  // Dynamic fetch instead of mockData
-  const systemAwards = awardStorage.getAwards();
-  const category = systemAwards.find((c) => c.type === awardType);
-  
-  // Safe fallback if icon doesn't exist dynamically
-  const IconComponent = category && category.icon
-    ? (LucideIcons[category.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>)
-    : (LucideIcons.Award as React.ComponentType<{ className?: string }>);
+  // 2. Calculate remaining votes for this specific user pair
+  const currentCount = (currentUser && employee) ? nominationStorage.getNominationCountBetweenUsers(currentUser.id, employee.id) : 0;
+  const remainingVotes = Math.max(0, 5 - currentCount);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const user = auth.getCurrentUser();
-    
-    if (!user) {
-      toast.error("You must be logged in to nominate");
+  // 3. Check if the logged-in user has ALREADY used this specific Award Type in the active sprint
+  let hasUsedAward = false;
+  if (currentUser && awardType && activeSprint) {
+      const sprintStart = new Date(activeSprint.startDate).setHours(0,0,0,0);
+      const sprintEnd = new Date(activeSprint.endDate).setHours(23,59,59,999);
+      
+      hasUsedAward = allNoms.some(n =>
+          n.nominatorId === currentUser.id &&
+          n.awardType === awardType &&
+          new Date(n.timestamp).getTime() >= sprintStart &&
+          new Date(n.timestamp).getTime() <= sprintEnd
+      );
+  }
+
+  const handleSubmit = () => {
+    if (!currentUser || !employee || !awardType) return;
+    if (!comment.trim()) {
+      toast.error("Please add a reason for the nomination.");
       return;
     }
-
-    if (nominationStorage.hasUserNominatedForAward(user.id, awardType)) {
-      toast.error(`You have already cast a vote for ${awardType}`);
-      return;
+    
+    if (remainingVotes <= 0) {
+        toast.error(`Limit Reached: You have no votes left for ${employee.name}!`);
+        return;
     }
 
-    nominationStorage.addNomination(
-      employee.id,
-      user.id,
-      awardType,
-      comment,
-      rating
-    );
+    if (hasUsedAward) {
+        toast.error(`You have already used the "${awardType}" award in this sprint!`);
+        return;
+    }
 
-    toast.success(`Nomination sent to ${employee.name}!`, {
-      description: `${awardType} • ${rating} stars applied`,
-    });
+    setIsSubmitting(true);
     
-    setComment("");
-    onClose();
+    try {
+        nominationStorage.addNomination(employee.id, currentUser.id, awardType as string, comment, 5); 
+        toast.success(`Vote cast successfully! You have recognized ${employee.name}.`);
+        onClose();
+    } catch (error) {
+        toast.error("System error. Failed to submit nomination.");
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
+  if (!isOpen || !employee || !awardType) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            {IconComponent && (
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: category?.color || "#f59e0b" }}
-              >
-                <IconComponent className="w-6 h-6 text-white" />
-              </div>
-            )}
-            <div>
-              <DialogTitle>Nominate {employee.name}</DialogTitle>
-              <DialogDescription>{awardType}</DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {hasAlreadyVoted ? (
-          <div className="py-8 flex flex-col items-center text-center space-y-4">
-             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-               <Lock className="w-8 h-8 text-gray-400" />
-             </div>
-             <div>
-               <h3 className="text-lg font-semibold text-gray-900">Vote Already Cast</h3>
-               <p className="text-sm text-gray-500 max-w-xs mx-auto mt-2">
-                 You have already used your nomination for the <strong>{awardType}</strong> category. You cannot nominate another person for this award.
-               </p>
-             </div>
-             <Button variant="outline" onClick={onClose} className="mt-4">
-               Close
-             </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 border border-slate-200">
             
-            <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 flex flex-col items-center justify-center space-y-2">
-              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                Recognition Level
-              </span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className="w-8 h-8 text-amber-400 fill-amber-400"
-                  />
-                ))}
-              </div>
-              <p className="text-sm text-amber-600 font-medium">
-                Highest Honor (5 Stars)
-              </p>
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-indigo-100 text-indigo-600 flex items-center justify-center rounded-xl font-bold uppercase shadow-sm">
+                        {employee.name.charAt(0)}
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 leading-tight">Recognize {employee.name}</h2>
+                        <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">{awardType}</p>
+                    </div>
+                </div>
+                <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-white p-2 rounded-full shadow-sm border border-slate-200 transition-colors self-start">
+                    <X className="w-5 h-5" />
+                </button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="comment">Why do they deserve this?</Label>
-              <Textarea
-                id="comment"
-                placeholder="Share a specific example of their work..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                required
-                rows={4}
-              />
+            {/* Content */}
+            <div className="p-6 space-y-6">
+                
+                {hasUsedAward ? (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex gap-3 text-red-700 text-sm font-medium">
+                        <Ban className="w-5 h-5 shrink-0" />
+                        <p>You have already used your <strong>{awardType}</strong> award during this sprint! You must select a different award to recognize a peer.</p>
+                    </div>
+                ) : remainingVotes <= 0 ? (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex gap-3 text-red-700 text-sm font-medium">
+                        <Ban className="w-5 h-5 shrink-0" />
+                        <p>You have 0 votes left for this person. You can only nominate a specific peer a maximum of 5 times.</p>
+                    </div>
+                ) : (
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex gap-3 text-indigo-700 text-sm font-medium">
+                        <Info className="w-5 h-5 shrink-0" />
+                        <p>You have <strong>{remainingVotes} vote{remainingVotes !== 1 ? 's' : ''} left</strong> for this person. Make it count by providing a meaningful reason!</p>
+                    </div>
+                )}
+
+                <div className="space-y-3">
+                    <label className="text-sm font-bold text-slate-700">Reason for Nomination</label>
+                    <Textarea 
+                        placeholder="e.g., John went above and beyond to help me debug the critical deployment issue this week..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        disabled={hasUsedAward || remainingVotes <= 0}
+                        className="min-h-[120px] bg-slate-50 border-slate-200 focus:bg-white focus:border-[#0A1128] text-sm resize-none rounded-xl p-4 shadow-inner disabled:opacity-50"
+                    />
+                </div>
             </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white gap-2">
-                <Send className="w-4 h-4" />
-                Send Nomination
-              </Button>
+            {/* Footer */}
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <Button variant="outline" onClick={onClose} className="h-11 px-6 rounded-xl font-bold text-slate-600 hover:bg-slate-100 border-slate-200">
+                    Cancel
+                </Button>
+                <Button 
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting || !comment.trim() || hasUsedAward || remainingVotes <= 0} 
+                    className="h-11 px-6 rounded-xl font-bold bg-[#0A1128] hover:bg-[#141E3C] text-white shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                    {isSubmitting ? 'Submitting...' : <>Submit Vote <Send className="w-4 h-4"/></>}
+                </Button>
             </div>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+
+        </div>
+    </div>
   );
 };

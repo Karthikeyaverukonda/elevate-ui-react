@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Award, LogOut, Trophy, X, Vote, Users, TrendingUp, 
   ArrowLeft, Zap, Calendar, Star, Sparkles, Heart, Activity,
-  Globe, Briefcase, Crown, Medal, Loader2, Info, Shield, UserCircle, ChevronRight, RefreshCw, Camera, Map
+  Globe, Briefcase, Crown, Medal, Loader2, Info, Shield, UserCircle, ChevronRight, RefreshCw, Camera, Map, Lock, Network, Clock
 } from "lucide-react";
 import { AwardCategoryCard } from "@/components/AwardCategoryCard";
 import { EmployeeCard } from "@/components/EmployeeCard";
 import { NominationModal } from "@/components/NominationModal";
 import { Employee, AwardType, Badge as BadgeType } from "@/types/employee";
-import { auth, employeeStorage, nominationStorage, artManagerActions, employeeActions, getARTById, getTeamById, sprintStorage, awardStorage, StoredAward, STORAGE_KEYS } from "@/lib/localStorage";
+import { auth, employeeStorage, nominationStorage, artManagerActions, employeeActions, getARTById, getTeamById, sprintStorage, awardStorage, StoredAward, STORAGE_KEYS, ART, Team } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card"; 
 
@@ -28,6 +28,21 @@ interface TeamStats {
   topPerformers: Employee[];
 }
 
+const getDisplayName = (u: any) => {
+    if (!u) return 'Unknown User';
+    if (u.name && !u.firstName) return u.name;
+    const first = u.firstName || '';
+    const last = u.lastName || '';
+    const combined = `${first} ${last}`.trim();
+    if (!combined) return 'Unknown User';
+    
+    if (combined.toLowerCase() === 'system admin') return 'Alice (Admin)';
+    if (combined.toLowerCase() === 'tech lead') return 'Bob (Manager)';
+    if (combined.toLowerCase() === 'scrum master') return 'Charlie (Scrum Master)';
+    
+    return combined;
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,9 +50,11 @@ const Home = () => {
   const [view, setView] = useState<'dashboard' | 'nomination' | 'history'>('dashboard');
   const [isLoading, setIsLoading] = useState(true);
 
-  const [showTeamSelection, setShowTeamSelection] = useState(false);
-  const [availableTeams, setAvailableTeams] = useState<any[]>([]);
-  const [myArt, setMyArt] = useState<any>(null);
+  // Onboarding States
+  const [onboardingStep, setOnboardingStep] = useState<'arts' | 'teams' | 'waiting'>('arts');
+  const [allArts, setAllArts] = useState<ART[]>([]);
+  const [selectedArtForOnboarding, setSelectedArtForOnboarding] = useState<ART | null>(null);
+  const [availableTeamsForOnboarding, setAvailableTeamsForOnboarding] = useState<Team[]>([]);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentEmployeeRecord, setCurrentEmployeeRecord] = useState<Employee | undefined>(undefined);
@@ -61,46 +78,215 @@ const Home = () => {
     const user = auth.getCurrentUser();
     if (!user) {
       navigate("/");
-    } else {
-      setCurrentUser(user);
+      return;
     }
+    
+    // FIX: Removed the forced routing rule that was kicking Scrum Masters out of the Home page!
+    setCurrentUser(user);
   }, [navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (currentUser?.role === 'employee' && currentUser?.teamId) {
-        const allUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "[]");
-        const myDbRecord = allUsers.find((u: any) => u.id === currentUser.id);
-        
-        if (myDbRecord && !myDbRecord.teamId) {
+      const user = auth.getCurrentUser();
+      if (!user) {
           clearInterval(interval);
-          auth.logout();
-          toast.error("Your team was dissolved by the Train Manager. You have been logged out.");
           navigate("/");
-        }
+          return;
+      }
+      
+      if (user.id === currentUser?.id) {
+          if (user.status !== currentUser.status || user.teamId !== currentUser.teamId) {
+              // FIX: Scrum masters are allowed to stay here now!
+              setCurrentUser(user);
+          }
       }
     }, 2000); 
     return () => clearInterval(interval);
   }, [currentUser, navigate]);
 
+  const fetchData = useCallback(() => {
+    if (!currentUser || currentUser.status !== 'approved') return; 
+
+    const fetchedAwards = awardStorage.getAwards();
+    setSystemAwards(fetchedAwards);
+    
+    let targetManagerId = undefined;
+    if (currentUser.role === 'employee' && currentUser.artId) {
+        const art = getARTById(currentUser.artId);
+        targetManagerId = art ? art.managerId : undefined;
+    } else if (currentUser.role === 'art-manager') {
+        targetManagerId = currentUser.id;
+    }
+    
+    const sprints = sprintStorage.getSprints(targetManagerId);
+    const currentSprint = sprints.find(s => s.status === 'active') || sprints[sprints.length - 1];
+    
+    if (currentSprint) setCurrentSprintName(currentSprint.title);
+    else setCurrentSprintName("No Active Phase");
+
+    const allUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "[]");
+    const allApprovedUsers = allUsers.filter((u: any) => u.status === 'approved');
+    
+    const allSystemTeams = artManagerActions.getTeams(); 
+    const allArts = artManagerActions.getARTs();
+    const allNominationsInSystem = nominationStorage.getNominations();
+
+    setGlobalStats({
+      users: 1452, // Dummy count
+      arts: 14,    // Dummy count
+      teams: 56    // Dummy count
+    });
+
+    const myArts = currentUser.role === 'art-manager' 
+        ? artManagerActions.getARTs().filter(a => a.managerId === currentUser.id)
+        : [];
+    const myArtIds = currentUser.role === 'art-manager' 
+        ? myArts.map(a => a.id) 
+        : currentUser.role === 'employee' ? [currentUser.artId] : [];
+        
+    const myTeams = allSystemTeams.filter(t => myArtIds.includes(t.artId));
+
+    // Check bounds correctly to end of day
+    const checkSprintBounds = (timestampStr: string) => {
+        if (!currentSprint) return false;
+        const d = new Date(timestampStr).getTime();
+        const start = new Date(currentSprint.startDate).setHours(0,0,0,0);
+        const end = new Date(currentSprint.endDate).setHours(23,59,59,999);
+        return currentSprint.status === 'active' ? (d >= start) : (d >= start && d <= end);
+    };
+
+    const employeesWithSprintData = allApprovedUsers.map((emp: any) => {
+      const allBadges = nominationStorage.getNominationsForEmployee(emp.id);
+      
+      const currentSprintBadges = allBadges.filter(b => checkSprintBounds(b.timestamp));
+      const historicalBadges = currentSprint ? allBadges.filter(b => !checkSprintBounds(b.timestamp)) : allBadges;
+
+      const teamSize = allApprovedUsers.filter((e: any) => e.teamId === emp.teamId).length;
+      const potentialVoters = Math.max(1, teamSize - 1);
+      const fairnessMultiplier = SCALING_FACTOR / Math.sqrt(potentialVoters);
+      
+      let sprintScore = 0;
+      currentSprintBadges.forEach(b => { 
+          const awardDef = fetchedAwards.find(a => a.type === b.awardType);
+          const basePoints = awardDef?.points || BASE_VOTE_VALUE;
+          sprintScore += Math.round(basePoints * fairnessMultiplier); 
+      });
+
+      return { 
+          id: emp.id,
+          name: getDisplayName(emp),
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          role: emp.role,
+          teamId: emp.teamId,
+          artId: emp.artId,
+          profilePicture: emp.profilePicture,
+          badges: currentSprintBadges, 
+          pastBadges: historicalBadges, 
+          totalScore: sprintScore,
+          totalAwards: allBadges.length,
+          jobTitle: emp.jobTitle || 'Team Member',
+          department: 'Engineering'
+      };
+    });
+
+    const groupedStats = myTeams.map(team => {
+        const teamEmps = employeesWithSprintData.filter((e: any) => e.teamId === team.id);
+        const activeEmps = teamEmps.filter((e: any) => e.totalScore > 0);
+        const top = [...activeEmps].sort((a: any, b: any) => b.totalScore - a.totalScore || a.name.localeCompare(b.name)).slice(0, 5);
+        return { teamId: team.id, teamName: team.name, topPerformers: top };
+    });
+    setTeamStatsList(groupedStats);
+
+    let globalFeed: any[] = [];
+    if (currentSprint) {
+        const sprintNoms = allNominationsInSystem.filter(n => checkSprintBounds(n.timestamp));
+        sprintNoms.forEach(nom => {
+            const receiver = employeesWithSprintData.find((e: any) => e.id === nom.nomineeId);
+            if (!receiver) return;
+
+            let includeInFeed = false;
+            if (currentUser.role === 'employee' && receiver.teamId === currentUser.teamId) {
+                includeInFeed = true;
+            }
+            if (currentUser.role === 'art-manager' && myTeams.some(t => t.id === receiver.teamId)) {
+                includeInFeed = true;
+            }
+
+            if (includeInFeed) {
+                const giverUser = employeesWithSprintData.find((e: any) => e.id === nom.nominatorId);
+                globalFeed.push({
+                    id: nom.id,
+                    givenBy: giverUser?.name || nom.givenBy || "A Peer",
+                    receiverName: receiver.name,
+                    receiverImg: receiver.profilePicture,
+                    awardType: nom.awardType,
+                    timestamp: nom.timestamp
+                });
+            }
+        });
+    }
+
+    globalFeed.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setRecentActivity(globalFeed.slice(0, 10));
+
+    if (currentUser.role === 'employee') {
+        const myTeamEmployees = employeesWithSprintData.filter((e: any) => e.teamId === currentUser.teamId);
+        setEmployees(myTeamEmployees as any);
+    } 
+
+    const myEmployeeRecord = employeesWithSprintData.find((e: any) => e.id === currentUser.id);
+    setCurrentEmployeeRecord(myEmployeeRecord as any);
+
+    let myLifetimeBadges: BadgeType[] = [];
+    if (myEmployeeRecord) {
+      myLifetimeBadges = nominationStorage.getNominationsForEmployee(myEmployeeRecord.id);
+    } else {
+      myLifetimeBadges = nominationStorage.getNominationsForEmployee(currentUser.id);
+    }
+
+    const mySprintBadges = myLifetimeBadges.filter(b => checkSprintBounds(b.timestamp));
+
+    const nominationsMadeCount = allNominationsInSystem.filter(n => {
+        return n.nominatorId === currentUser.id && checkSprintBounds(n.timestamp);
+    }).length;
+
+    setUserStats({ 
+        badgesEarned: mySprintBadges.length, 
+        nominationsMade: nominationsMadeCount, 
+        avgRating: myEmployeeRecord ? (myEmployeeRecord as any).totalScore : 0 
+    });
+  }, [currentUser]);
+
   useEffect(() => {
     if (currentUser) {
       try {
-        if (currentUser.role === 'employee' && currentUser.artId && !currentUser.teamId) {
-            const art = getARTById(currentUser.artId);
-            setMyArt(art);
-            const allTeams = artManagerActions.getTeams(); 
-            const filteredTeams = allTeams.filter(t => t.artId === currentUser.artId); 
-            setAvailableTeams(filteredTeams);
+        if (currentUser.role === 'employee' && (currentUser.status === 'pending' || !currentUser.teamId)) {
+            if (!currentUser.artId && !currentUser.teamId) {
+                if (onboardingStep !== 'arts') setOnboardingStep('arts');
+                setAllArts(artManagerActions.getARTs());
+            } else if (currentUser.artId && !currentUser.teamId) {
+                if (onboardingStep !== 'teams') setOnboardingStep('teams');
+                const art = getARTById(currentUser.artId);
+                setSelectedArtForOnboarding(art || null);
+                setAvailableTeamsForOnboarding(artManagerActions.getTeams().filter(t => t.artId === currentUser.artId));
+            } else if (currentUser.teamId && currentUser.status === 'pending') {
+                if (onboardingStep !== 'waiting') setOnboardingStep('waiting');
+            }
         }
-        fetchData();
+        
+        if (currentUser.status === 'approved') {
+            fetchData();
+            window.addEventListener('local-storage-update', fetchData);
+            return () => window.removeEventListener('local-storage-update', fetchData);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
     }
-  }, [currentUser]);
+  }, [currentUser, onboardingStep, fetchData]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,16 +314,13 @@ const Home = () => {
             ctx?.drawImage(img, 0, 0, width, height);
             const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
 
-            const allEmployees = JSON.parse(localStorage.getItem(STORAGE_KEYS.EMPLOYEES) || "[]");
-            const idx = allEmployees.findIndex((emp: any) => emp.id === currentUser?.id);
-            
+            const allUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "[]");
+            const idx = allUsers.findIndex((u: any) => u.id === currentUser?.id);
             if (idx !== -1) {
-                allEmployees[idx].profilePicture = dataUrl;
-                localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(allEmployees));
+                allUsers[idx].profilePicture = dataUrl;
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(allUsers));
                 toast.success("Profile picture updated!");
                 fetchData(); 
-            } else {
-                toast.error("Could not find employee record.");
             }
         };
         img.src = event.target?.result as string;
@@ -145,171 +328,21 @@ const Home = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleJoinTeam = (teamId: string) => {
-    if (employeeActions.joinTeam(currentUser.id, teamId)) {
-        toast.success("Joined Team Successfully!");
-        const updatedUser = auth.getCurrentUser();
-        setCurrentUser(updatedUser);
-        setShowTeamSelection(false);
-    } else {
-        toast.error("Failed to join team.");
-    }
+  const handleSelectArtForOnboarding = (art: ART) => {
+      setSelectedArtForOnboarding(art);
+      setAvailableTeamsForOnboarding(artManagerActions.getTeams().filter(t => t.artId === art.id));
+      setOnboardingStep('teams');
   };
 
-  const fetchData = () => {
-    if (!currentUser) return; 
-
-    // FIXED: Awards are now completely global, fetched identically for everyone!
-    setSystemAwards(awardStorage.getAwards());
-    
-    let targetManagerId = undefined;
-    if (currentUser.role === 'employee' && currentUser.artId) {
-        const art = getARTById(currentUser.artId);
-        targetManagerId = art ? art.managerId : undefined;
-    } else if (currentUser.role === 'art-manager') {
-        targetManagerId = currentUser.id;
-    }
-    
-    const sprints = sprintStorage.getSprints(targetManagerId);
-    const currentSprint = sprints.find(s => s.status === 'active') || sprints[sprints.length - 1];
-    
-    if (currentSprint) {
-        setCurrentSprintName(currentSprint.title);
-    } else {
-        setCurrentSprintName("No Active Phase");
-    }
-
-    const allEmployees = employeeStorage.getEmployees();
-    const allSystemTeams = artManagerActions.getTeams(); 
-    const allArts = artManagerActions.getARTs();
-    const allNominationsInSystem = nominationStorage.getNominations();
-
-    setGlobalStats({
-      users: allEmployees.length,
-      arts: allArts.length,
-      teams: allSystemTeams.length
-    });
-
-    const myArts = currentUser.role === 'art-manager' 
-        ? artManagerActions.getARTs().filter(a => a.managerId === currentUser.id)
-        : [];
-    const myArtIds = currentUser.role === 'art-manager' 
-        ? myArts.map(a => a.id) 
-        : currentUser.role === 'employee' ? [currentUser.artId] : [];
-        
-    const myTeams = allSystemTeams.filter(t => myArtIds.includes(t.artId));
-
-    const employeesWithSprintData = allEmployees.map(emp => {
-      const allBadges = nominationStorage.getNominationsForEmployee(emp.id);
-      
-      const currentSprintBadges = allBadges.filter(b => {
-        if (!currentSprint) return false;
-        const d = new Date(b.timestamp).getTime();
-        const start = new Date(currentSprint.startDate).getTime();
-        if (currentSprint.status === 'active') return d >= start;
-        const end = new Date(currentSprint.endDate).getTime();
-        return d >= start && d <= end;
-      });
-
-      const historicalBadges = currentSprint ? allBadges.filter(b => new Date(b.timestamp).getTime() < new Date(currentSprint.startDate).getTime()) : allBadges;
-
-      const empTeamSize = allEmployees.filter(e => e.teamId === emp.teamId).length;
-      const potentialVoters = Math.max(1, empTeamSize - 1);
-      const fairnessMultiplier = SCALING_FACTOR / Math.sqrt(potentialVoters);
-      
-      let sprintScore = 0;
-      currentSprintBadges.forEach(() => { sprintScore += Math.round(BASE_VOTE_VALUE * fairnessMultiplier); });
-
-      return { ...emp, badges: currentSprintBadges, pastBadges: historicalBadges, totalScore: sprintScore };
-    });
-
-    const groupedStats = myTeams.map(team => {
-        const teamEmps = employeesWithSprintData.filter(e => e.teamId === team.id);
-        const activeEmps = teamEmps.filter(e => e.totalScore > 0);
-        const top = [...activeEmps].sort((a, b) => b.totalScore - a.totalScore || a.name.localeCompare(b.name)).slice(0, 3);
-        return {
-            teamId: team.id,
-            teamName: team.name,
-            topPerformers: top
-        };
-    });
-    setTeamStatsList(groupedStats);
-
-    let globalFeed: any[] = [];
-    
-    if (currentSprint) {
-        const sprintNoms = allNominationsInSystem.filter(n => {
-            const d = new Date(n.timestamp).getTime();
-            const start = new Date(currentSprint.startDate).getTime();
-            if (currentSprint.status === 'active') return d >= start;
-            return d >= start && d <= new Date(currentSprint.endDate).getTime();
-        });
-
-        sprintNoms.forEach(nom => {
-            const receiver = allEmployees.find(e => e.id === nom.nomineeId);
-            if (!receiver) return;
-
-            let includeInFeed = false;
-            if (currentUser.role === 'employee' && receiver.teamId === currentUser.teamId) {
-                includeInFeed = true;
-            }
-            if (currentUser.role === 'art-manager' && myTeams.some(t => t.id === receiver.teamId)) {
-                includeInFeed = true;
-            }
-
-            if (includeInFeed) {
-                const giverUser = allEmployees.find(e => e.id === nom.nominatorId);
-                globalFeed.push({
-                    id: nom.id,
-                    givenBy: nom.givenBy || giverUser?.name || "A Peer",
-                    receiverName: receiver.name,
-                    receiverImg: receiver.profilePicture,
-                    awardType: nom.awardType,
-                    timestamp: nom.timestamp
-                });
-            }
-        });
-    }
-
-    globalFeed.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    setRecentActivity(globalFeed.slice(0, 10));
-
-    if (currentUser.role === 'employee') {
-        const myTeamEmployees = employeesWithSprintData.filter(e => e.teamId === currentUser.teamId);
-        setEmployees(myTeamEmployees);
-    } 
-
-    const myEmployeeRecord = allEmployees.find(e => e.id === currentUser.id);
-    setCurrentEmployeeRecord(myEmployeeRecord);
-
-    let myLifetimeBadges: BadgeType[] = [];
-    if (myEmployeeRecord) {
-      myLifetimeBadges = nominationStorage.getNominationsForEmployee(myEmployeeRecord.id);
-    } else {
-      myLifetimeBadges = nominationStorage.getNominationsForEmployee(currentUser.id);
-    }
-
-    const mySprintBadges = currentSprint ? myLifetimeBadges.filter(b => {
-        const d = new Date(b.timestamp).getTime();
-        const start = new Date(currentSprint.startDate).getTime();
-        if (currentSprint.status === 'active') return d >= start;
-        return d >= start && d <= new Date(currentSprint.endDate).getTime();
-    }) : [];
-
-    const nominationsMadeCount = currentSprint ? allNominationsInSystem.filter(n => {
-        const d = new Date(n.timestamp).getTime();
-        const start = new Date(currentSprint.startDate).getTime();
-        const isCurrent = currentSprint.status === 'active' ? (d >= start) : (d >= start && d <= new Date(currentSprint.endDate).getTime());
-        return n.nominatorId === currentUser.id && isCurrent;
-    }).length : 0;
-
-    const mySprintRecord = employeesWithSprintData.find(e => e.id === currentUser.id);
-
-    setUserStats({ 
-        badgesEarned: mySprintBadges.length, 
-        nominationsMade: nominationsMadeCount, 
-        avgRating: mySprintRecord ? mySprintRecord.totalScore : 0 
-    });
+  const handleRequestJoinTeam = (teamId: string, artId: string) => {
+      const success = employeeActions.requestTeam(currentUser.id, artId, teamId);
+      if (success) {
+          toast.success("Request sent for approval!");
+          setCurrentUser({ ...currentUser, artId, teamId, status: 'pending' });
+          setOnboardingStep('waiting');
+      } else {
+          toast.error("Failed to submit request.");
+      }
   };
 
   const handleLogout = () => {
@@ -343,70 +376,133 @@ const Home = () => {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-10 h-10 text-indigo-600 animate-spin" /></div>;
   }
 
-  if (currentUser.role === 'employee' && currentUser.artId && !currentUser.teamId) {
-      const art = getARTById(currentUser.artId);
-      const allSystemTeams = artManagerActions.getTeams(); 
-      const availableDynamicTeams = allSystemTeams.filter(t => t.artId === currentUser.artId);
+  // ==========================================
+  // ONBOARDING FLOW FOR NEW EMPLOYEES
+  // ==========================================
+  if (currentUser.role === 'employee' && (currentUser.status === 'pending' || !currentUser.teamId)) {
+      
+      if (onboardingStep === 'arts') {
+          return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+                <div className="max-w-4xl w-full">
+                    <div className="text-center mb-10">
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome aboard, {currentUser.firstName}! 🚂</h1>
+                        <p className="text-slate-500">To get started, please select your Agile Release Train (ART).</p>
+                    </div>
 
-      return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-            <div className="max-w-3xl w-full">
-                <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome aboard, {currentUser.firstName}! 🚂</h1>
-                    <p className="text-slate-500">You have been assigned to the <strong>{art?.name}</strong> ART. <br/>Please join your specific team to start nominating peers.</p>
-                </div>
-
-                {!showTeamSelection ? (
-                     <div 
-                        onClick={() => setShowTeamSelection(true)}
-                        className="bg-white p-8 rounded-3xl border-2 border-indigo-100 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-xl transition-all group flex items-center justify-between"
-                     >
-                        <div className="flex items-center gap-6">
-                            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                <Briefcase className="w-10 h-10" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                        {allArts.length === 0 ? (
+                            <div className="col-span-full text-center py-12 bg-white rounded-3xl border shadow-sm">
+                                <Map className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                <h3 className="text-lg font-bold text-slate-900">No ARTs Available</h3>
+                                <p className="text-slate-500 mt-1">Please ask your Train Manager to configure the system.</p>
+                                <Button variant="outline" onClick={handleLogout} className="mt-4">Logout</Button>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-slate-900">{art?.name}</h2>
-                                <p className="text-slate-500">{art?.department}</p>
-                            </div>
-                        </div>
-                        <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-600" />
-                     </div>
-                ) : (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                        <div className="flex justify-between items-center">
-                            <Button variant="ghost" onClick={() => setShowTeamSelection(false)} className="pl-0"><ArrowLeft className="w-4 h-4 mr-2"/> Back</Button>
-                            <Button variant="outline" size="sm" onClick={() => fetchData()} className="text-indigo-600"><RefreshCw className="w-4 h-4 mr-2"/> Refresh Teams</Button>
-                        </div>
-                        
-                        <h3 className="text-lg font-semibold text-slate-800">Available Teams in {art?.name}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {availableDynamicTeams.length === 0 ? (
-                                <div className="col-span-2 text-center py-10 bg-white rounded-2xl border">
-                                  <p className="text-slate-400">No teams created in this ART yet.</p>
-                                  <Button variant="ghost" onClick={() => setShowTeamSelection(false)} className="mt-2">Go Back</Button>
-                                </div>
-                            ) : (
-                                availableDynamicTeams.map(t => (
-                                    <div key={t.id} className="bg-white p-6 rounded-2xl border hover:shadow-lg transition-all space-y-4">
-                                        <div>
-                                            <h4 className="font-bold text-lg text-slate-900">{t.name}</h4>
-                                            <p className="text-xs text-slate-500 line-clamp-2">{t.description}</p>
-                                        </div>
-                                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={() => handleJoinTeam(t.id)}>Join Team</Button>
+                        ) : (
+                            allArts.map(art => (
+                                <div 
+                                    key={art.id}
+                                    onClick={() => handleSelectArtForOnboarding(art)}
+                                    className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-xl transition-all group flex flex-col items-center text-center"
+                                >
+                                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors mb-4">
+                                        <Briefcase className="w-8 h-8" />
                                     </div>
-                                ))
-                            )}
+                                    <h2 className="text-xl font-bold text-slate-900 mb-1">{art.name}</h2>
+                                    <p className="text-sm text-slate-500 mb-4">{art.department}</p>
+                                    <div className="text-indigo-600 font-bold text-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Select ART <ChevronRight className="w-4 h-4 ml-1" />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    {allArts.length > 0 && (
+                        <div className="text-center mt-8">
+                            <Button variant="ghost" onClick={handleLogout} className="text-slate-500">Sign Out</Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+          );
+      }
+
+      if (onboardingStep === 'teams') {
+          return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+                <div className="max-w-4xl w-full">
+                    <Button variant="ghost" onClick={() => setOnboardingStep('arts')} className="mb-6 pl-0 hover:bg-transparent hover:text-indigo-600">
+                        <ArrowLeft className="w-4 h-4 mr-2"/> Back to ARTs
+                    </Button>
+                    
+                    <div className="text-center mb-10">
+                        <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 mb-4 px-3 py-1 text-sm border-0">
+                            {selectedArtForOnboarding?.name}
+                        </Badge>
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Select Your Team</h1>
+                        <p className="text-slate-500">Choose the specific team you belong to within this ART.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4">
+                        {availableTeamsForOnboarding.length === 0 ? (
+                            <div className="col-span-full text-center py-12 bg-white rounded-3xl border shadow-sm">
+                                <Network className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                <h3 className="text-lg font-bold text-slate-900">No Teams Available</h3>
+                                <p className="text-slate-500 mt-1">There are no teams configured in this ART yet.</p>
+                            </div>
+                        ) : (
+                            availableTeamsForOnboarding.map(team => (
+                                <div 
+                                    key={team.id}
+                                    onClick={() => handleRequestJoinTeam(team.id, team.artId)}
+                                    className="bg-white p-8 rounded-3xl border border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-xl transition-all group flex flex-col items-center text-center"
+                                >
+                                    <div className="w-16 h-16 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors mb-4">
+                                        <Network className="w-8 h-8" />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-slate-900 mb-1">{team.name}</h2>
+                                    <p className="text-xs text-slate-500 mb-4 line-clamp-2">{team.description || 'No description provided.'}</p>
+                                    <div className="text-indigo-600 font-bold text-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity mt-auto pt-2">
+                                        Request to Join <ChevronRight className="w-4 h-4 ml-1" />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+          );
+      }
+
+      if (onboardingStep === 'waiting') {
+          const myTeam = getTeamById(currentUser.teamId);
+          return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+                <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-10 text-center animate-in zoom-in-95 duration-500">
+                    <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100 relative">
+                        <Lock className="w-10 h-10 text-amber-500" />
+                        <div className="absolute top-0 right-0 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm">
+                            <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
                         </div>
                     </div>
-                )}
+                    <h1 className="text-2xl font-bold text-slate-900 mb-2">Request Pending</h1>
+                    <p className="text-slate-500 mb-6 leading-relaxed">
+                        Your request to join <strong>{myTeam?.name || 'the team'}</strong> has been sent to the Train Manager and Scrum Master. You will gain access to the dashboard once they approve it.
+                    </p>
+                    <div className="bg-slate-50 rounded-xl p-4 mb-8 text-sm text-slate-600 font-medium flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> Waiting for manager approval...
+                    </div>
+                    <Button variant="outline" onClick={handleLogout} className="w-full h-12 rounded-xl font-bold text-slate-600">
+                        Sign Out
+                    </Button>
+                </div>
             </div>
-        </div>
-      );
+          );
+      }
   }
 
-  const firstName = currentUser.firstName || 'Team Member';
-  const fullName = currentUser.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : 'Team Member';
+  const firstName = getDisplayName(currentUser).split(' ')[0];
+  const fullName = getDisplayName(currentUser);
   const profilePic = currentEmployeeRecord?.profilePicture;
   const isEmployee = currentUser.role === 'employee';
   const myTeam = getTeamById(currentUser.teamId);
@@ -415,7 +511,17 @@ const Home = () => {
   const myTopPerformers = myTeamStats ? myTeamStats.topPerformers : [];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50/50 relative overflow-hidden font-sans">
+      
+      <style>
+        {`
+          @keyframes antigravity { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+          @keyframes antigravity-reverse { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(15px) rotate(3deg); } }
+          .animate-float { animation: antigravity 6s ease-in-out infinite; }
+          .animate-float-reverse { animation: antigravity-reverse 7s ease-in-out infinite; }
+        `}
+      </style>
+
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -432,20 +538,30 @@ const Home = () => {
           </div>
           <div className="flex items-center gap-4">
             
+            {currentUser?.jobTitle === 'Scrum Master' && (
+                <Button 
+                    variant="outline" 
+                    className="mr-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50 font-bold rounded-xl hidden sm:flex"
+                    onClick={() => navigate('/scrum-master')}
+                >
+                    <Shield className="w-4 h-4 mr-2"/> Manager Console
+                </Button>
+            )}
+
             <div 
               className="flex items-center gap-3 p-1.5 rounded-full pr-4 cursor-pointer hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group"
               onClick={() => fileInputRef.current?.click()}
               title="Click to update profile picture"
             >
               <div className="relative">
-                {profilePic ? <img src={profilePic} className="w-8 h-8 rounded-full border border-slate-200 object-cover" /> : <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><UserCircle className="w-5 h-5" /></div>}
+                {profilePic ? <img src={profilePic} className="w-8 h-8 rounded-full border border-slate-200 object-cover" /> : <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center uppercase font-bold">{firstName.charAt(0)}</div>}
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                    <Camera className="w-3 h-3 text-white" />
                 </div>
               </div>
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-semibold text-gray-900 leading-none mb-0.5">{fullName}</p>
-                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border-indigo-100">{currentUser.role === 'art-manager' ? 'Train Manager' : currentUser.role}</Badge>
+                <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border-indigo-100">{currentUser.role === 'art-manager' ? 'Train Manager' : currentUser.jobTitle || currentUser.role}</Badge>
               </div>
             </div>
 
@@ -462,12 +578,12 @@ const Home = () => {
                <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row items-center md:items-start gap-6">
                  
                  <div 
-                    className="relative w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border-2 border-white/30 overflow-hidden cursor-pointer group shrink-0"
+                    className="relative w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl border-2 border-white/30 cursor-pointer group shrink-0 uppercase font-bold animate-float shadow-2xl"
                     onClick={() => fileInputRef.current?.click()}
                     title="Change Profile Picture"
                  >
-                    {profilePic ? <img src={profilePic} className="w-full h-full object-cover" /> : firstName.charAt(0)}
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {profilePic ? <img src={profilePic} className="w-full h-full object-cover rounded-full" /> : firstName.charAt(0)}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                        <Camera className="w-6 h-6 text-white" />
                     </div>
                  </div>
@@ -495,22 +611,22 @@ const Home = () => {
                           <div className="relative z-10"><h3 className="text-xl font-bold text-gray-900 mb-2"><Vote className="inline w-5 h-5 mr-2"/> Nominate Peer</h3><p className="text-sm text-gray-500">Recognize amazing work.</p></div>
                         </div>
                         <div onClick={() => navigate('/leaderboard')} className="group relative cursor-pointer overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-xl hover:border-orange-200 transition-all duration-300">
-                          <div className="relative z-10"><h3 className="text-xl font-bold text-gray-900 mb-2"><Trophy className="inline w-5 h-5 mr-2"/> Leaderboard</h3><p className="text-sm text-gray-500">See the charts.</p></div>
+                          <div className="relative z-10"><h3 className="text-xl font-bold text-gray-900 mb-2"><Trophy className="inline w-5 h-5 mr-2"/> Leaderboard</h3><p className="text-sm text-gray-500">See the champions.</p></div>
                         </div>
                       </div>
                      </div>
 
                      <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-white p-4 rounded-2xl border text-center flex flex-col justify-center">
-                            <span className="text-2xl font-bold text-gray-900">{userStats.badgesEarned}</span>
-                            <span className="text-xs text-muted-foreground font-medium mt-1">Badges Received</span>
+                        <div className="bg-white p-4 rounded-2xl border text-center flex flex-col justify-center shadow-sm hover:shadow-md transition-shadow">
+                            <span className="text-3xl font-bold text-gray-900">{userStats.badgesEarned}</span>
+                            <span className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-widest">Lifetime Badges</span>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl border text-center flex flex-col justify-center">
-                            <span className="text-2xl font-bold text-gray-900">{userStats.nominationsMade}</span>
-                            <span className="text-xs text-muted-foreground font-medium mt-1">Votes Cast</span>
+                        <div className="bg-white p-4 rounded-2xl border text-center flex flex-col justify-center shadow-sm hover:shadow-md transition-shadow">
+                            <span className="text-3xl font-bold text-gray-900">{userStats.nominationsMade}</span>
+                            <span className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-widest">Lifetime Votes</span>
                         </div>
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-2xl border border-indigo-100 text-center flex flex-col justify-center">
-                            <span className="text-2xl font-bold text-indigo-700">{userStats.avgRating}</span>
+                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-2xl border border-indigo-100 text-center flex flex-col justify-center shadow-sm hover:shadow-md transition-shadow">
+                            <span className="text-3xl font-bold text-indigo-700">{userStats.avgRating}</span>
                             <span className="text-xs text-indigo-600/80 font-bold uppercase tracking-wider mt-1">Sprint Pts</span>
                         </div>
                      </div>
@@ -521,39 +637,27 @@ const Home = () => {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-slate-100">
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
-                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.users}</div>
+                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.users.toLocaleString()}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Users className="w-3 h-3"/> Active Users</div>
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                               Total registered employees
-                            </div>
                           </div>
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
-                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.arts}</div>
+                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.arts.toLocaleString()}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Map className="w-3 h-3"/> Active ARTs</div>
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                               Total active Release Trains
-                            </div>
                           </div>
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
-                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.teams}</div>
+                            <div className="text-2xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{globalStats.teams.toLocaleString()}</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Briefcase className="w-3 h-3"/> Total Teams</div>
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                               Total registered teams
-                            </div>
                           </div>
                           <div className="flex flex-col items-center justify-center text-center px-2 group relative">
                             <div className="text-2xl font-bold text-emerald-600 group-hover:text-emerald-500 transition-colors">High</div>
                             <div className="text-xs text-muted-foreground font-medium flex items-center gap-1 mt-1"><Zap className="w-3 h-3"/> Engagement</div>
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                               Current platform activity level
-                            </div>
                           </div>
                         </div>
                      </div>
                  </div>
 
                  <div className="lg:col-span-1 space-y-8">
-                     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
+                     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm relative overflow-hidden h-full">
                        <div className="flex items-center justify-between mb-4">
                          <h3 className="font-bold text-gray-900 flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-500" /> Top Performers</h3>
                          <Button variant="link" className="text-xs text-indigo-600 p-0 h-auto" onClick={() => navigate('/leaderboard')}>Full board →</Button>
@@ -565,31 +669,20 @@ const Home = () => {
                              <div key={emp.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
                                <div className="flex items-center gap-3">
                                  <div className="w-6 text-center text-xl font-bold">{renderRankIcon(i, emp.totalScore, myTopPerformers)}</div>
-                                 <img src={emp.profilePicture} className="w-8 h-8 rounded-full object-cover"/>
+                                 {emp.profilePicture ? 
+                                    <img src={emp.profilePicture} className="w-8 h-8 rounded-full object-cover shadow-sm"/> :
+                                    <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold uppercase shadow-sm">{emp.name.charAt(0)}</div>
+                                 }
                                  <div>
                                    <p className="text-sm font-semibold text-gray-900">{emp.name}</p>
                                    <p className="text-[10px] text-muted-foreground">{emp.jobTitle}</p>
                                  </div>
                                </div>
-                               <Badge variant="secondary" className="bg-white border border-slate-200 text-indigo-600 font-bold">{emp.totalScore} pts</Badge>
+                               <Badge variant="secondary" className="bg-white border border-slate-200 text-indigo-600 font-bold shadow-sm">{emp.totalScore} pts</Badge>
                              </div>
                            ))
                          }
                        </div>
-                     </div>
-
-                     <div className="bg-white rounded-2xl border shadow-sm h-full p-4 overflow-y-auto max-h-[500px]">
-                        <h3 className="font-semibold mb-4 text-slate-800">Activity in {currentSprintName}</h3>
-                        {recentActivity.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">No activity yet.</div> : 
-                        recentActivity.map(item => (
-                            <div key={item.id} className="flex gap-3 text-sm mb-4 border-b border-slate-50 pb-3 last:border-0">
-                              <img src={item.receiverImg} className="w-8 h-8 rounded-full shadow-sm object-cover" />
-                              <div className="leading-snug">
-                                  <span className="font-bold text-slate-900">{item.givenBy}</span> recognized <span className="font-bold text-indigo-600">{item.receiverName}</span>
-                                  <div className="text-xs text-slate-500 mt-1">{item.awardType}</div>
-                              </div>
-                            </div>
-                        ))}
                      </div>
                  </div>
               </div>
