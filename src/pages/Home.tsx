@@ -11,7 +11,7 @@ import { AwardCategoryCard } from "@/components/AwardCategoryCard";
 import { EmployeeCard } from "@/components/EmployeeCard";
 import { NominationModal } from "@/components/NominationModal";
 import { Employee, AwardType, Badge as BadgeType } from "@/types/employee";
-import { auth, employeeStorage, nominationStorage, artManagerActions, employeeActions, getARTById, getTeamById, sprintStorage, awardStorage, StoredAward, STORAGE_KEYS, ART, Team } from "@/lib/localStorage";
+import { employeeStorage, nominationStorage, artManagerActions, employeeActions, getARTById, getTeamById, sprintStorage, awardStorage, StoredAward, STORAGE_KEYS, ART, Team } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card"; 
 
@@ -75,7 +75,7 @@ const Home = () => {
   const [filterAward, setFilterAward] = useState<AwardType | null>(null);
 
   useEffect(() => {
-    const user = auth.getCurrentUser();
+    const user = localStorage.getItem("currentUser") ? JSON.parse(localStorage.getItem("currentUser") as string) : null;
     if (!user) {
       navigate("/");
       return;
@@ -87,7 +87,7 @@ const Home = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const user = auth.getCurrentUser();
+      const user = localStorage.getItem("currentUser") ? JSON.parse(localStorage.getItem("currentUser") as string) : null;
       if (!user) {
           clearInterval(interval);
           navigate("/");
@@ -167,7 +167,7 @@ const Home = () => {
       
       let sprintScore = 0;
       currentSprintBadges.forEach(b => { 
-          const awardDef = fetchedAwards.find(a => a.type === b.awardType);
+          const awardDef = fetchedAwards.find(a => a.award_name === b.award_name);
           const basePoints = awardDef?.points || BASE_VOTE_VALUE;
           sprintScore += Math.round(basePoints * fairnessMultiplier); 
       });

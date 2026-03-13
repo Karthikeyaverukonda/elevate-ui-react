@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Users, Shield, Check, X, Clock, Database, Briefcase, Award, LogOut, RefreshCw, Camera, Plus, Edit, Trash2, LayoutDashboard, Search, ChevronRight, Zap, Crown, Settings, Target, Map, Network, Trophy, User } from "lucide-react";
-import { auth, adminActions, artManagerActions, awardStorage, StoredUser, STORAGE_KEYS, userActions, ART, StoredAward } from "@/lib/localStorage";
+import { adminActions, artManagerActions, awardStorage, StoredUser, STORAGE_KEYS, userActions, ART, StoredAward } from "@/lib/localStorage";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 type DashboardTab = 'overview' | 'requests' | 'directory' | 'awards';
-type DirectoryView = 'art-manager' | 'admin';
+type DirectoryView = 'Art Manager' | 'Admin';
 
 // Robust helper to extract a human name, regardless of how they signed up
 const getDisplayName = (u: any) => {
@@ -33,7 +33,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
-  const [directoryView, setDirectoryView] = useState<DirectoryView>('art-manager');
+  const [directoryView, setDirectoryView] = useState<DirectoryView>('Art Manager');
   
   const [pendingRequests, setPendingRequests] = useState<StoredUser[]>([]);
   const [allUsers, setAllUsers] = useState<StoredUser[]>([]);
@@ -45,7 +45,13 @@ const AdminDashboard = () => {
 
   const [isAwardModalOpen, setIsAwardModalOpen] = useState(false);
   const [editingAward, setEditingAward] = useState<StoredAward | null>(null);
-  const [awardForm, setAwardForm] = useState({ type: '', description: '' });
+  const [awardForm, setAwardForm] = useState({ name: '', description: '' ,image: ''});
+
+  const [admindashboardTotalUsers,setAdmindashboardTotalUsers] = useState(0);
+  const [admindashboardActiveARTs,setAdmindashboardActiveARTs] = useState(0);
+  const [admindashboardTotalTeams,setAdmindashboardTotalTeams] = useState(0);
+  const [admindashboardNominations,setAdmindashboardNominations] = useState(0);
+  const [selectedAwardId, setSelectedAwardId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,33 +71,38 @@ const AdminDashboard = () => {
           return response.json();
         })
         .then((data) => {
-          console.log("Fetched admin dashboard data:", data);
-          });
+            setAdmindashboardTotalUsers(data.total_users);
+            setAdmindashboardActiveARTs(data.total_arts);
+            setAdmindashboardTotalTeams(data.total_teams);
+            setAdmindashboardNominations(data.all_time_nominations);
+            console.log("Fetched admin dashboard data:", data);
+          }).catch((err: any) => {
+          toast.error(err.message || 'Signup failed');
+        });
           
-        }
-        setPendingRequests(adminActions.getPendingRequests());
+    setPendingRequests(adminActions.getPendingRequests());
     setAllUsers(adminActions.getAllUsers());
     setAllArts(artManagerActions.getARTs());
     setAwards(awardStorage.getAwards());
+    console.log("awards data ", awards);
   }, []);
-    );
         
   useEffect(() => {
-    const user = auth.getCurrentUser('admin'); 
-    if (!user || user.role !== 'admin') {
+    const user_id = sessionStorage.getItem(STORAGE_KEYS.USER_ID);
+    const user_login = sessionStorage.getItem(STORAGE_KEYS.USER_LOGIN);
+    const user_role = sessionStorage.getItem(STORAGE_KEYS.USER_ROLE);
+    if (!user_id || !user_login || !user_role || user_role !== 'Admin') {
         navigate("/");
         return;
     }
-    setCurrentUser(user);
+    setCurrentUser({ id: user_id, login: user_login, role: user_role });
     loadData();
 
     const handleStorageChange = () => loadData();
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('local-storage-update', handleStorageChange);
     
-    const interval = setInterval(() => loadData(), 2000);
     return () => {
-        clearInterval(interval);
         window.removeEventListener('storage', handleStorageChange);
         window.removeEventListener('local-storage-update', handleStorageChange);
     };
@@ -130,15 +141,15 @@ const AdminDashboard = () => {
   const handleSaveAward = (e: React.FormEvent) => {
       e.preventDefault();
       try {
-          if (!awardForm.type.trim() || !awardForm.description.trim()) {
-              return toast.error("Please fill in both fields.");
+          if (!awardForm.name.trim() || !awardForm.description.trim() || !awardForm.image.trim()) {
+              return toast.error("Please fill in all fields.");
           }
           
           if (editingAward) {
-              awardStorage.updateAward(editingAward.id, awardForm.type.trim(), awardForm.description.trim());
+              awardStorage.updateAward(editingAward.award_id, awardForm.name.trim(), awardForm.description.trim(), awardForm.image.trim());
               toast.success("Award updated successfully!");
           } else {
-              awardStorage.addAward(awardForm.type.trim(), awardForm.description.trim());
+              awardStorage.addAward(awardForm.name.trim(), awardForm.description.trim(), awardForm.image.trim());
               toast.success("New award created!");
           }
           setIsAwardModalOpen(false);
@@ -160,8 +171,8 @@ const AdminDashboard = () => {
       getDisplayName(u).toLowerCase().includes(directorySearch.toLowerCase())
   );
   const filteredAwards = awards.filter(a => 
-      a.type.toLowerCase().includes(awardSearch.toLowerCase()) || 
-      a.description.toLowerCase().includes(awardSearch.toLowerCase())
+      a.award_name.toLowerCase().includes(awardSearch.toLowerCase()) || 
+      a.award_description.toLowerCase().includes(awardSearch.toLowerCase())
   );
 
   return (
@@ -204,7 +215,7 @@ const AdminDashboard = () => {
                 <Button variant="outline" onClick={() => { loadData(); toast.info("System refreshed"); }} className="bg-white text-slate-600 hover:bg-slate-50 border-slate-200 h-11 px-5 rounded-xl font-semibold">
                     <RefreshCw className="w-4 h-4 mr-2" /> Sync
                 </Button>
-                <Button variant="secondary" onClick={() => { auth.logout(); navigate("/"); }} className="bg-white border border-slate-200 text-[#0A1128] hover:bg-slate-50 shadow-sm h-11 px-6 font-bold rounded-xl">
+                <Button variant="secondary" onClick={() => {navigate("/"); }} className="bg-white border border-slate-200 text-[#0A1128] hover:bg-slate-50 shadow-sm h-11 px-6 font-bold rounded-xl">
                     <LogOut className="w-4 h-4 mr-2" /> Logout
                 </Button>
             </div>
@@ -266,7 +277,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 group-hover:text-[#0A1128] transition-colors">Total Users</p>
-                                        <h3 className="text-4xl font-extrabold text-slate-900">500</h3>
+                                        <h3 className="text-4xl font-extrabold text-slate-900">{admindashboardTotalUsers}</h3>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0A1128]/5 group-hover:text-[#0A1128] transition-all border border-slate-100/50">
                                         <Users className="w-7 h-7" />
@@ -286,7 +297,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 group-hover:text-[#0A1128] transition-colors">Active ARTs</p>
-                                        <h3 className="text-4xl font-extrabold text-slate-900">12</h3>
+                                        <h3 className="text-4xl font-extrabold text-slate-900">{admindashboardActiveARTs}</h3>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0A1128]/5 group-hover:text-[#0A1128] transition-all border border-slate-100/50">
                                         <Map className="w-7 h-7" />
@@ -306,7 +317,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 group-hover:text-[#0A1128] transition-colors">Total Teams</p>
-                                        <h3 className="text-4xl font-extrabold text-slate-900">48</h3>
+                                        <h3 className="text-4xl font-extrabold text-slate-900">{admindashboardTotalTeams}</h3>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0A1128]/5 group-hover:text-[#0A1128] transition-all border border-slate-100/50">
                                         <Network className="w-7 h-7" />
@@ -326,7 +337,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 group-hover:text-[#0A1128] transition-colors">Nominations</p>
-                                        <h3 className="text-4xl font-extrabold text-slate-900">1,204</h3>
+                                        <h3 className="text-4xl font-extrabold text-slate-900">{admindashboardNominations}</h3>
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0A1128]/5 group-hover:text-[#0A1128] transition-all border border-slate-100/50">
                                         <Trophy className="w-7 h-7" />
@@ -445,8 +456,8 @@ const AdminDashboard = () => {
                                                 <div>
                                                     <p className="font-bold text-slate-900 text-lg">{displayName}</p>
                                                     <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant="outline" className={`font-semibold bg-slate-50 ${req.role === 'admin' ? 'text-purple-700' : 'text-[#0A1128]'}`}>
-                                                            {req.role === 'admin' ? 'System Admin' : 'Train Manager'}
+                                                        <Badge variant="outline" className={`font-semibold bg-slate-50 ${req.role === 'Admin' ? 'text-purple-700' : 'text-[#0A1128]'}`}>
+                                                            {req.role === 'Admin' ? 'System Admin' : 'Train Manager'}
                                                         </Badge>
                                                         <span className="text-xs text-slate-500">
                                                             Requested: {new Date(req.createdAt).toLocaleDateString()}
@@ -455,7 +466,7 @@ const AdminDashboard = () => {
                                                 </div>
                                             </div>
                                             <div className="flex-1 text-sm text-slate-500 px-4 py-2 border-l border-slate-200 font-medium">
-                                                <span className="text-slate-700 font-bold">{displayName}</span> {req.role === 'admin' 
+                                                <span className="text-slate-700 font-bold">{displayName}</span> {req.role === 'Admin' 
                                                     ? "is requesting full administrative system oversight." 
                                                     : "is requesting access and will configure their ART and Department upon first login."
                                                 }
@@ -495,14 +506,14 @@ const AdminDashboard = () => {
                                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                                     <div className="bg-slate-100 p-1 rounded-lg inline-flex w-full sm:w-auto shadow-inner">
                                         <button 
-                                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'art-manager' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
-                                            onClick={() => setDirectoryView('art-manager')}
+                                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'Art Manager' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setDirectoryView('Art Manager')}
                                         >
                                             Train Managers
                                         </button>
                                         <button 
-                                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'admin' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
-                                            onClick={() => setDirectoryView('admin')}
+                                            className={`px-5 py-1.5 rounded-md text-sm font-bold transition-all ${directoryView === 'Admin' ? 'bg-white shadow-sm text-[#0A1128]' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setDirectoryView('Admin')}
                                         >
                                             Administrators
                                         </button>
@@ -528,7 +539,7 @@ const AdminDashboard = () => {
                             <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                                 {filteredDirectory.map((user, index) => {
                                     const managerArt = allArts.find(a => a.managerId === user.id);
-                                    const isAdmin = user.role === 'admin';
+                                    const isAdmin = user.role === 'Admin';
                                     const displayName = getDisplayName(user);
                                     
                                     return (
@@ -578,7 +589,7 @@ const AdminDashboard = () => {
                                 })}
                                 {filteredDirectory.length === 0 && (
                                     <div className="text-center py-20 text-slate-500 text-sm font-medium">
-                                        No {directoryView === 'admin' ? 'Administrators' : 'Train Managers'} found.
+                                        No {directoryView === 'Admin' ? 'Administrators' : 'Train Managers'} found.
                                     </div>
                                 )}
                             </div>
@@ -614,7 +625,7 @@ const AdminDashboard = () => {
                                     </div>
                                     <Button 
                                         className="bg-[#0A1128] hover:bg-[#141E3C] text-white h-10 px-6 font-bold rounded-lg w-full sm:w-auto shadow-sm"
-                                        onClick={() => { setEditingAward(null); setAwardForm({type:'', description:''}); setIsAwardModalOpen(true); }}
+                                        onClick={() => { setEditingAward(null); setAwardForm({name:'', description:'', image:''}); setIsAwardModalOpen(true); }}
                                     >
                                         <Plus className="w-4 h-4 mr-2"/> New Award
                                     </Button>
@@ -629,21 +640,28 @@ const AdminDashboard = () => {
                             </div>
                             <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                                 {filteredAwards.map((aw, index) => (
-                                    <div key={`${aw.id}-${index}`} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                    <div key={`${aw.award_id}-${index}`} className="grid grid-cols-12 items-center px-6 sm:px-8 py-4 border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                         <div className="col-span-4 font-semibold flex items-center gap-3 text-slate-900 pr-4">
-                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-black/5 shadow-sm" style={{ backgroundColor: aw.color }}>
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-black/5 shadow-sm">
                                                 <Award className="w-5 h-5 text-white" />
                                             </div>
-                                            <span className="truncate text-base">{aw.type}</span>
+                                            <span className="truncate text-base">{aw.award_name}</span>
                                         </div>
                                         <div className="col-span-5 text-sm text-slate-500 pr-6 line-clamp-2 font-medium">
-                                            {aw.description}
+                                            {aw.award_description}
+                                        </div>
+                                        <div className="col-span-3 text-sm text-slate-500 pr-6">
+                                            {aw.award_image ? (
+                                                <img src={aw.award_image} alt="Award" className="w-8 h-8 object-cover rounded-md border border-slate-200" />
+                                            ) : (
+                                                <span className="text-xs italic text-slate-400">No image</span>
+                                            )}
                                         </div>
                                         <div className="col-span-3 text-right flex justify-end gap-2">
-                                            <Button size="sm" className="h-9 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-100 font-bold rounded-lg shadow-sm" onClick={() => { setEditingAward(aw); setAwardForm({ type: aw.type, description: aw.description }); setIsAwardModalOpen(true); }}>
+                                            <Button size="sm" className="h-9 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border border-blue-100 font-bold rounded-lg shadow-sm" onClick={() => { setEditingAward(aw); setAwardForm({ name: aw.award_name, description: aw.award_description, image: aw.award_image }); setIsAwardModalOpen(true); }}>
                                                 <Edit className="w-4 h-4 mr-1.5" /> Edit
                                             </Button>
-                                            <Button size="sm" className="h-9 px-4 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100 font-bold rounded-lg shadow-sm" onClick={() => handleDeleteAward(aw.id)}>
+                                            <Button size="sm" className="h-9 px-4 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border border-red-100 font-bold rounded-lg shadow-sm" onClick={() => handleDeleteAward(aw.award_id)}>
                                                 <Trash2 className="w-4 h-4 mr-1.5" /> Delete
                                             </Button>
                                         </div>
@@ -679,11 +697,15 @@ const AdminDashboard = () => {
              <form onSubmit={handleSaveAward} className="p-6 space-y-5">
                  <div className="space-y-2">
                      <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Badge Title</label>
-                     <Input placeholder="e.g. Innovation Champion" value={awardForm.type} onChange={e => setAwardForm({...awardForm, type: e.target.value})} required className="h-12 border-slate-200 focus:border-[#0A1128] font-medium" />
+                     <Input placeholder="e.g. Innovation Champion" value={awardForm.name} onChange={e => setAwardForm({...awardForm, name: e.target.value})} required className="h-12 border-slate-200 focus:border-[#0A1128] font-medium" />
                  </div>
                  <div className="space-y-2">
                      <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Criteria Description</label>
                      <Input placeholder="What is this award given for?" value={awardForm.description} onChange={e => setAwardForm({...awardForm, description: e.target.value})} required className="h-12 border-slate-200 focus:border-[#0A1128] font-medium" />
+                 </div>
+                 <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-widest">Badge Image URL</label>
+                        <Input placeholder="Enter image URL for the badge" value={awardForm.image} onChange={e => setAwardForm({...awardForm, image: e.target.value})} className="h-12 border-slate-200 focus:border-[#0A1128] font-medium" />
                  </div>
                  <div className="pt-4">
                      <Button type="submit" className="w-full bg-[#0A1128] hover:bg-[#141E3C] h-12 text-md font-bold text-white rounded-xl shadow-md">

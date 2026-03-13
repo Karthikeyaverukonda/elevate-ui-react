@@ -1,4 +1,6 @@
+import { toast } from "sonner";
 import { Employee, Badge, AwardType } from "@/types/employee";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export const STORAGE_KEYS = {
   USERS: "sprintwise_users_v78",
@@ -11,13 +13,17 @@ export const STORAGE_KEYS = {
   TEAMS: "sprintwise_teams_v78",
   NOTIFICATIONS: "sprintwise_notifications_v78",
   AWARDS: "sprintwise_awards_v78",
+  USER_ID: "user_id",
+  USER_LOGIN: "user_login",
+  USER_ROLE: "user_role",
+  CURRENT_ART: "current_art"
 };
 
 const TAB_USER_KEY = "sprintwise_tab_user_v78";
 const BASE_VOTE_VALUE = 50; 
 const SCALING_FACTOR = 3.0;
 
-export type UserRole = 'admin' | 'art-manager' | 'employee';
+export type UserRole = 'Admin' | 'Art Manager' | 'Employee' | 'Scrum Master';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
 
 export interface StoredUser {
@@ -34,6 +40,15 @@ export interface StoredUser {
   createdAt: string;
   createdBy?: string;
   profilePicture?: string;
+}
+
+
+export interface pendingArtEmployee{
+  employee_name: string;
+  team_name: string;
+  employee_role: string;
+  image: string;
+  active_status: string;
 }
 
 export interface StoredNomination {
@@ -58,12 +73,10 @@ export interface StoredSprint {
 }
 
 export interface StoredAward {
-    id: string;
-    type: string;
-    description: string;
-    icon: string;
-    color?: string;
-    points?: number;
+    award_id: string;
+    award_name: string;
+    award_description: string;
+    award_image: string;
 }
 
 export interface ART {
@@ -76,10 +89,10 @@ export interface ART {
 }
 
 export interface Team {
-  id: string;
-  artId: string;
-  name: string;
-  description: string;
+  team_id: string;
+  art_id: string;
+  team_name: string;
+  team_description: string;
 }
 
 export const generateId = () => {
@@ -103,18 +116,15 @@ const setAndSync = (key: string, value: any) => {
 };
 
 const getBaseAwards = (): StoredAward[] => [
-    { id: `aw_1_global`, type: "Culture Champion", icon: "Heart", color: "#e11d48", description: "Promoting positive team culture", points: 50 },
-    { id: `aw_2_global`, type: "Bug Slayer", icon: "Sword", color: "#dc2626", description: "Fixing critical issues", points: 30 },
-    { id: `aw_3_global`, type: "Team Player", icon: "Users", color: "#2563eb", description: "Helping others succeed", points: 40 },
-    { id: `aw_4_global`, type: "Innovator", icon: "Lightbulb", color: "#d97706", description: "Creative solutions", points: 60 },
+
 ];
 
 const initializeDefaults = () => {
   const now = new Date().toISOString();
   if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
     const defaultUsers: StoredUser[] = [
-      { id: "user_admin", firstName: "John", lastName: "Doe", password: "John@123", role: "admin", status: "approved", needsPasswordChange: false, createdAt: now },
-      { id: "user_manager", firstName: "Steven", lastName: "Strange", password: "password123", role: "art-manager", status: "approved", needsPasswordChange: false, createdAt: now },
+      { id: "user_admin", firstName: "John", lastName: "Doe", password: "John@123", role: "Admin", status: "approved", needsPasswordChange: false, createdAt: now },
+      { id: "user_manager", firstName: "Steven", lastName: "Strange", password: "password123", role: "Art Manager", status: "approved", needsPasswordChange: false, createdAt: now },
     ];
     setAndSync(STORAGE_KEYS.USERS, defaultUsers);
   }
@@ -162,7 +172,7 @@ export const auth = {
     if (users.some(u => u.firstName.toLowerCase() === firstName.toLowerCase() && u.lastName.toLowerCase() === lastName.toLowerCase())) {
         return { success: false, error: "An account with this exact name already exists." };
     }
-    const isSuperAdmin = firstName.toLowerCase() === 'john' && lastName.toLowerCase() === 'doe' && password === 'John@123' && role === 'admin';
+    const isSuperAdmin = firstName.toLowerCase() === 'john' && lastName.toLowerCase() === 'doe' && password === 'John@123' && role === 'Admin';
     
     const newUser: StoredUser = { 
       id: generateId(), firstName, lastName, password, role, jobTitle,
@@ -180,7 +190,7 @@ export const auth = {
     if (!user) return { success: false, error: "Invalid credentials" };
     if (user.role !== selectedRole) return { success: false, error: "Incorrect portal role selected" };
     
-    if (user.status === 'pending' && user.role !== 'employee') {
+    if (user.status === 'pending' && user.role !== 'Employee') {
         return { success: false, error: "Account pending" };
     }
     if (user.status === 'rejected') return { success: false, error: "Account is disabled." };
@@ -194,39 +204,54 @@ export const auth = {
 };
 
 export const artManagerActions = {
-  getPendingEmployeesForManager: (managerId: string) => {
-      const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
-      const arts = safeParse<ART[]>(STORAGE_KEYS.ARTS, []).filter(a => a.managerId === managerId);
-      const artIds = arts.map(a => a.id);
-      return users.filter(u => u.role === 'employee' && u.status === 'pending' && u.teamId && u.artId && artIds.includes(u.artId));
-  },
+  getPendingEmployeesForManager: async(art_id: any) => {
+      var return_data:any = [""];
+      try{
+      await fetch(`http://127.0.0.1:8000/api/pending-art-employees/?art_id=${art_id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'get pending employees failed');
+          }
+          return_data = await response.json();
+          console.log("Fetched pending employees for ART:", return_data);
+        })} catch(err: any){
+          toast.error(err.message || 'get pending employees failed');
+          return null;
+        }
+        console.log("reached before retrunnnnnnnnnnn")
+    return return_data;
+},
   
   getPendingEmployeesForScrumMaster: (artId: string) => {
       const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
-      return users.filter(u => u.role === 'employee' && u.status === 'pending' && u.artId === artId && u.jobTitle !== 'Scrum Master');
+      return users.filter(u => u.role === 'Employee' && u.status === 'pending' && u.artId === artId && u.jobTitle !== 'Scrum Master');
   },
 
   getManagedEmployees: (managerId: string) => {
       const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
       const arts = safeParse<ART[]>(STORAGE_KEYS.ARTS, []);
       const myArtIds = arts.filter(a => a.managerId === managerId).map(a => a.id);
-      return users.filter(u => u.role === 'employee' && (u.status === 'approved' || u.status === 'rejected') && (u.artId && myArtIds.includes(u.artId)));
+      return users.filter(u => u.role === 'Employee' && (u.status === 'approved' || u.status === 'rejected') && (u.artId && myArtIds.includes(u.artId)));
   },
 
   approveEmployee: (userId: string, teamId: string) => {
     const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
     const idx = users.findIndex(u => u.id === userId);
     const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []);
-    const targetTeam = teams.find(t => t.id === teamId);
+    const targetTeam = teams.find(t => t.art_id === teamId);
 
     if (idx !== -1 && targetTeam) {
       users[idx].status = 'approved';
-      users[idx].artId = targetTeam.artId;
+      users[idx].artId = targetTeam.art_id;
       users[idx].teamId = teamId;
 
       const employees = safeParse<any[]>(STORAGE_KEYS.EMPLOYEES, []);
       const arts = safeParse<ART[]>(STORAGE_KEYS.ARTS, []);
-      const art = arts.find(a => a.id === targetTeam.artId);
+      const art = arts.find(a => a.id === targetTeam.art_id);
       
       const existingEmpIdx = employees.findIndex((e: any) => e.id === userId);
       if (existingEmpIdx !== -1) {
@@ -262,7 +287,28 @@ export const artManagerActions = {
       return false;
   },
 
-  getARTs: () => safeParse<ART[]>(STORAGE_KEYS.ARTS, []),
+  getMyART: async () => {
+    var return_data :any= [""]
+    try{
+      await fetch(`http://127.0.0.1:8000/api/art/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'get pending employees failed');
+          }
+          return_data = await response.json();
+        })
+      }catch (err: any) {
+    toast.error(err?.message || "get my ART failed");
+    return null;
+  }
+  return return_data[0];
+},
+
+
   createART: (name: string, department: string, managerId: string) => {
     const arts = safeParse<ART[]>(STORAGE_KEYS.ARTS, []);
     arts.push({ id: generateId(), name, department, managerId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -283,24 +329,45 @@ export const artManagerActions = {
     setAndSync(STORAGE_KEYS.ARTS, arts);
   },
   
-  getTeams: () => safeParse<Team[]>(STORAGE_KEYS.TEAMS, []),
+  getTeams: async (art_id: string) => {
+    var return_data :any= ""
+    try{
+      await fetch(`http://127.0.0.1:8000/api/teams/?artId=${art_id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'get teams failed');
+          }
+          return_data = await response.json();
+          console.log("Fetched teams:", return_data);
+
+        })
+      }catch (err: any) {
+    toast.error(err?.message || "get teams failed");
+    return null;
+  }
+  return return_data;
+  },
   createTeam: (artId: string, name: string, description: string) => {
-    const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []);
-    teams.push({ id: generateId(), artId, name, description });
-    setAndSync(STORAGE_KEYS.TEAMS, teams);
+    // const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []);
+    // teams.push({ id: generateId(), artId, name, description });
+    // setAndSync(STORAGE_KEYS.TEAMS, teams);
   },
   updateTeam: (id: string, artId: string, name: string, description: string) => {
     const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []);
-    const idx = teams.findIndex(t => t.id === id);
+    const idx = teams.findIndex(t => t.art_id === id);
     if (idx !== -1) {
-        teams[idx].artId = artId;
-        teams[idx].name = name;
-        teams[idx].description = description;
+        teams[idx].art_id = artId;
+        teams[idx].team_name = name;
+        teams[idx].team_description = description;
         setAndSync(STORAGE_KEYS.TEAMS, teams);
     }
   },
   deleteTeam: (id: string) => {
-    const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []).filter(t => t.id !== id);
+    const teams = safeParse<Team[]>(STORAGE_KEYS.TEAMS, []).filter(t => t.art_id !== id);
     setAndSync(STORAGE_KEYS.TEAMS, teams);
 
     const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
@@ -317,7 +384,7 @@ export const artManagerActions = {
 
 export const adminActions = {
   getAllUsers: () => safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []),
-  getPendingRequests: () => safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []).filter(u => u.status === 'pending' && (u.role === 'art-manager' || u.role === 'admin')),
+  getPendingRequests: () => safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []).filter(u => u.status === 'pending' && (u.role === 'Art Manager' || u.role === 'Admin')),
   approveUser: (id: string) => {
       const users = safeParse<StoredUser[]>(STORAGE_KEYS.USERS, []);
       const idx = users.findIndex(u => u.id === id);
@@ -403,33 +470,95 @@ export const sprintStorage = {
       setAndSync(STORAGE_KEYS.SPRINTS, s);
   }
 };
-
 export const awardStorage = {
   getAwards: () => {
-      const a = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
-      if (a.length === 0) {
-          const newAwards = getBaseAwards();
-          setAndSync(STORAGE_KEYS.AWARDS, newAwards);
-          return newAwards;
-      }
-      return a;
+    var data : any = "";
+      fetch(`http://127.0.0.1:8000/api/awards/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'get awards failed');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          data = data;
+          }).catch((err: any) => {
+          toast.error(err.message || 'get awards failed');
+        });
+      return data;
+
   },
-  addAward: (type: string, description: string) => {
-      const awards = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
-      const colors = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899'];
-      awards.push({ id: generateId(), type, description, icon: "Award", color: colors[Math.floor(Math.random() * colors.length)], points: 50 });
-      setAndSync(STORAGE_KEYS.AWARDS, awards);
-      return true;
+  addAward: (name: string, description: string, image: string) => {
+      fetch(`http://127.0.0.1:8000/api/awards/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+        body: JSON.stringify({
+          award_name: name.trim(),
+          award_description: description.trim(),
+          awards_image: image
+        }),
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'add award failed');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Fetched awards:", data);
+          return true;
+          })
+          .catch((err: any) => {
+          toast.error(err.message || 'add award failed');
+        });
   },
-  updateAward: (id: string, type: string, description: string) => {
-      const awards = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
-      const idx = awards.findIndex(a => a.id === id);
-      if (idx !== -1) { awards[idx].type = type; awards[idx].description = description; setAndSync(STORAGE_KEYS.AWARDS, awards); return true; }
-      return false;
+  updateAward: (id: string, name: string, description: string,image:string) => {
+      fetch(`http://127.0.0.1:8000/api/awards/?award_id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+        body: JSON.stringify({
+          award_name: name.trim(),
+          award_description: description.trim(),
+          awards_image: image
+        }),
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'add award failed');
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Fetched awards:", data);
+          return true;
+          })
+          .catch((err: any) => {
+          toast.error(err.message || 'add award failed');
+        });
   },
   deleteAward: (id: string) => {
-      const awards = safeParse<StoredAward[]>(STORAGE_KEYS.AWARDS, []);
-      setAndSync(STORAGE_KEYS.AWARDS, awards.filter(a => a.id !== id));
+      fetch(`http://127.0.0.1:8000/api/awards/?award_id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Signup failed');
+          }
+          return response.json();
+        })
+        .then((data) => {
+            console.log("Award deleted:", data.award_name);
+          }).catch((err: any) => {
+          toast.error(err.message || 'Signup failed');
+        });
       return true;
   }
 };
@@ -461,4 +590,4 @@ export const employeeStorage = {
 };
 
 export const getARTById = (id: string) => safeParse<ART[]>(STORAGE_KEYS.ARTS, []).find(a => a.id === id);
-export const getTeamById = (id: string) => safeParse<Team[]>(STORAGE_KEYS.TEAMS, []).find(t => t.id === id);
+export const getTeamById = (id: string) => safeParse<Team[]>(STORAGE_KEYS.TEAMS, []).find(t => t.art_id === id);
