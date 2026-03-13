@@ -18,12 +18,12 @@ const App = () => {
         <Route path="/" element={<Login />} />
 
         {/* Common routes (Employee + Manager) */}
-        <Route
+        {/* <Route
           path="/home"
           element={
               <Home />
           }
-        />
+        /> */}
 
         <Route
           path="/leaderboard"
@@ -49,12 +49,12 @@ const App = () => {
         />
 
         {/* Scrum Master route (NEW) */}
-        <Route
+        {/* <Route
           path="/scrum-master"
           element={
               <ScrumMasterDashboard />
           }
-        />
+        /> */}
 
         {/* Catch all unknown routes */}
         <Route path="*" element={<Navigate to="/" replace />} />

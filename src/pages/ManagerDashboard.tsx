@@ -91,58 +91,61 @@ const ManagerDashboard = () => {
     
 
     const myArtTeams = await artManagerActions.getTeams(myArt.art_id);
+    console.log("My ART Teams:", myArtTeams);
     setTeams(myArtTeams);
 
-    const loadedSprints = sprintStorage.getSprints(managerId);
+    const loadedSprints = await sprintStorage.getSprints(myArt.art_id);
+    console.log("Loaded Sprints:", loadedSprints);
     setSprints(loadedSprints);
 
     const systemAwards = await awardStorage.getAwards();
     console.log("System Awards:", systemAwards);
-    const allLegacyEmployees = employeeStorage.getEmployees();
+    
+    const allLegacyEmployees = employeeStorage.getmyARTEmployees(myArt.art_id);
     
     // Single Source of Truth for unified calculations
     const allUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "[]");
     const rawEmps = artManagerActions.getManagedEmployees(managerId);
     
-    const activeS = loadedSprints.find(s => s.status === 'active') || loadedSprints[loadedSprints.length - 1];
+    // const activeS = loadedSprints.find(s => s.status === 'active') || loadedSprints[loadedSprints.length - 1];
 
-    const empsWithScores = rawEmps.map(emp => {
-        const empRecord = allLegacyEmployees.find(e => e.id === emp.id);
-        const empBadges = nominationStorage.getNominationsForEmployee(emp.id);
+    // const empsWithScores = rawEmps.map(emp => {
+    //     const empRecord = allLegacyEmployees.find(e => e.id === emp.id);
+    //     const empBadges = nominationStorage.getNominationsForEmployee(emp.id);
 
-        let sprintScore = 0;
+    //     let sprintScore = 0;
 
-        if (activeS) {
-            // Precise End-Of-Day Bounds
-            const activeStart = new Date(activeS.startDate).setHours(0,0,0,0);
-            const activeEnd = new Date(activeS.endDate).setHours(23,59,59,999);
+    //     if (activeS) {
+    //         // Precise End-Of-Day Bounds
+    //         const activeStart = new Date(activeS.startDate).setHours(0,0,0,0);
+    //         const activeEnd = new Date(activeS.endDate).setHours(23,59,59,999);
             
-            const currentSprintBadges = empBadges.filter(n => {
-                const d = new Date(n.timestamp).getTime();
-                return activeS.status === 'active' ? (d >= activeStart) : (d >= activeStart && d <= activeEnd);
-            });
+    //         const currentSprintBadges = empBadges.filter(n => {
+    //             const d = new Date(n.timestamp).getTime();
+    //             return activeS.status === 'active' ? (d >= activeStart) : (d >= activeStart && d <= activeEnd);
+    //         });
 
-            // Backend-Ready Damped Square Calculation
-            const teamSize = allUsers.filter((u: any) => u.teamId === emp.teamId && u.status === 'approved').length;
-            const potentialVoters = Math.max(1, teamSize - 1); 
-            const fairnessMultiplier = SCALING_FACTOR / Math.sqrt(potentialVoters);
+    //         // Backend-Ready Damped Square Calculation
+    //         const teamSize = allUsers.filter((u: any) => u.teamId === emp.teamId && u.status === 'approved').length;
+    //         const potentialVoters = Math.max(1, teamSize - 1); 
+    //         const fairnessMultiplier = SCALING_FACTOR / Math.sqrt(potentialVoters);
             
-            currentSprintBadges.forEach(badge => {
-                const awardDef = systemAwards.find();
-                const basePoints = awardDef?.points || BASE_VOTE_VALUE;
-                sprintScore += Math.round(basePoints * fairnessMultiplier);
-            });
-        }
+    //         currentSprintBadges.forEach(badge => {
+    //             const awardDef = systemAwards.find();
+    //             const basePoints = awardDef?.points || BASE_VOTE_VALUE;
+    //             sprintScore += Math.round(basePoints * fairnessMultiplier);
+    //         });
+    //     }
 
-        return { 
-            ...emp, 
-            totalScore: sprintScore, 
-            totalAwards: empBadges.length,
-            jobTitle: empRecord?.jobTitle || emp.jobTitle || 'Team Member'
-        };
-    });
+    //     return { 
+    //         ...emp, 
+    //         totalScore: sprintScore, 
+    //         totalAwards: empBadges.length,
+    //         jobTitle: empRecord?.jobTitle || emp.jobTitle || 'Team Member'
+    //     };
+    // });
 
-    setManagedEmployees(empsWithScores);
+    // setManagedEmployees(empsWithScores);
   }, []);
 
   useEffect(() => {
