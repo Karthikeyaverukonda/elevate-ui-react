@@ -1,15 +1,27 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 
 import Login from "./pages/Login";
-import Home from "./pages/Home";
-import Leaderboard from "./pages/Leaderboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import ManagerDashboard from "./pages/ManagerDashboard";
-import ScrumMasterDashboard from "./pages/ScrumMasterDashboard";
 
+import ManagerDashboard from "./pages/ManagerDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import EmployeeHome from "./pages/EmployeeHome";
+import Nominations from "./pages/Nominations";
+import { TokenRefreshStorage } from "@/lib/ApiStorage";
+
+const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 15 minutes
 
 const App = () => {
+  useEffect(() => {
+    if (!localStorage.getItem('access_token')) return;
+    const interval = setInterval(() => {
+      TokenRefreshStorage.refreshToken();
+    }, REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -18,27 +30,18 @@ const App = () => {
         <Route path="/" element={<Login />} />
 
         {/* Common routes (Employee + Manager) */}
-        {/* <Route
-          path="/home"
-          element={
-              <Home />
-          }
-        /> */}
+        <Route path="/home" element={<EmployeeHome />} />
+        <Route path="/nominations" element={<Nominations />} />
 
-        <Route
-          path="/leaderboard"
-          element={
-              <Leaderboard />
-          }
-        />
 
-        {/* Admin route */}
-        <Route
+
+        {/* Admin route */} 
+        { <Route
           path="/admin"
           element={
               <AdminDashboard />
           }
-        />
+        /> }
 
         {/* Art Manager route */}
         <Route

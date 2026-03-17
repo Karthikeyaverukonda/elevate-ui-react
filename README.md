@@ -133,3 +133,11 @@ Check the Leaderboard to see how the weighted scoring updates in real-time.
 Click your Profile Picture in the header to upload a custom avatar or check your history.
 
 Want to see the management side? Log out and sign in as Admin or Train Manager to add new people to the system.
+
+
+Invalid Comment Format:
+Min 10 non-special chars	"hi!", "ok thanks"
+At least 2 words	"greatjobwelldonethanks" (one long word)
+No 4+ repeated chars	"aaaaaaaaaa", "1111111111"
+No keyboard row walks (5+ chars)	"asdfghjkl", "qwertyyy", "zxcvbnm"
+Min 5 unique characters	"ababababab", "aabbccaabb" 

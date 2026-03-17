@@ -5,19 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkles, ShieldAlert, CheckCircle2, ArrowLeft, ArrowRight, Train, Users, Shield } from "lucide-react";
 import { toast } from "sonner";
-import { UserRole } from "@/lib/localStorage";
+import { UserRole } from "@/data/models/Interfaces";
 
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const urlRole = searchParams.get("role") as UserRole;
   const [isSignUp, setIsSignUp] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(urlRole || null);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>();
   const [userDesignation, setUserDesignation] = useState("");
   const [userLogin, setUserLogin] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [userImage, setUserImage] = useState("");
+  const [userImage, setUserImage] = useState<File | null>(null);
   const [password, setPassword] = useState("");
 
 
@@ -38,21 +37,19 @@ const Login = () => {
       else {
         user_role = selectedRole
       }
-      const signupData: any = {
-        user_firstname: firstName.trim(),
-        user_lastname: lastName.trim(),
-        user_login: userLogin.trim(),
-        password: password,
-        user_role: user_role,
-        user_image: userImage
-      };
+      const signupData = new FormData();
+      signupData.append('user_firstname', firstName.trim());
+      signupData.append('user_lastname', lastName.trim());
+      signupData.append('user_login', userLogin.trim());
+      signupData.append('password', password);
+      signupData.append('user_role', user_role);
+      if (userImage) {
+        signupData.append('image', userImage);
+      }
 
       fetch('http://127.0.0.1:8000/api/signup/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(signupData),
+        body: signupData,
       })
         .then(async (response) => {
           if (!response.ok) {
@@ -111,8 +108,8 @@ const Login = () => {
           if (data.refresh_token) {
             localStorage.setItem('refresh_token', data.refresh_token);
           }
-          if(data.user && data.user.id) {
-            localStorage.setItem('user_id', data.user.id);
+          if(data.user && data.user.user_id) {
+            localStorage.setItem('user_id', data.user.user_id);
           }
           if(data.user && data.user.user_login) {
             localStorage.setItem('user_login', data.user.user_login);
@@ -138,7 +135,7 @@ const Login = () => {
             // If they are pending, they must go to /home to see the Waiting Room
             if (userRole === 'Scrum Master') {
                 console.log("Navigating to scrum master dashboard for Scrum Master role");
-                navigate("/scrum-master");
+                navigate("/home");
             } else {
                 console.log("Navigating to home for Employee role");
                 navigate("/home");
@@ -308,7 +305,7 @@ const Login = () => {
                               toast.error("File size exceeds 5MB limit. Please upload a smaller image.");
                               e.target.value = "";
                             } else {
-                              // Handle file upload logic here (e.g., store in state or upload to server)
+                              setUserImage(file);
                               toast.success("Profile image selected: " + file.name);
                             }
                           }
