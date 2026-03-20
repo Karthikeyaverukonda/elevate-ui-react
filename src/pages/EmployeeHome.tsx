@@ -80,10 +80,9 @@ const EmployeeHome = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    navigate("/");
+  const handleLogout = async() => {
+  await UserStorage.logoutUser();
+  navigate("/");
   };
 
   return (
@@ -103,7 +102,7 @@ const EmployeeHome = () => {
               <p className="text-sm font-semibold text-slate-800">{profile.employee_name}</p>
               <p className="text-xs text-muted-foreground">{profile.employee_role}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="ml-2 text-slate-600 hover:text-red-600 hover:border-red-300">
+            <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="ml-2 text-slate-600 hover:text-red-600 hover:border-red-300">
               <LogOut className="h-4 w-4 mr-1" />Logout
             </Button>
           </div>

@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 
-import { ART, Team, Sprint, pendingArtEmployee,Award, STORAGE_KEYS,UserRole,UserStatus,User } from "@/data/models/Interfaces";
+import { STORAGE_KEYS} from "@/data/models/Interfaces";
 
 
 
@@ -36,7 +36,7 @@ export const apiRequest = async (
     }
 
     const response = await fetch(url.toString(), options);
-
+    console.log("response from API:", response);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || failureMessage);
@@ -283,7 +283,20 @@ export const UserStorage = {
   getCurrentUserDetails: async () => {
     const response = await apiRequest('GET', 'get-user-employee-details/', undefined, undefined, 'Failed to fetch user details');
     return response ? response : null;
+  },
+
+  logoutUser: () => async () => {
+    const response = await apiRequest('POST', 'logout/', undefined, undefined, 'Failed to logout');
+    if (response) {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('User logged out successfully');
+    }
+    else {
+      toast.error('Failed to logout');
+    }
   }
+
 };
 
 export const TokenRefreshStorage = {
