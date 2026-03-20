@@ -11,7 +11,7 @@ import Nominations from "./pages/Nominations";
 import { TokenRefreshStorage } from "@/lib/ApiStorage";
 import LeaderBoard from "./pages/LeaderBoard";
 
-const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 15 minutes
+const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
 
 const App = () => {
   useEffect(() => {

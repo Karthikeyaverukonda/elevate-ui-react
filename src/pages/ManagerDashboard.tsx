@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
-import { sprintStorage, employeeStorage, awardStorage, artStorage, teamStorage } from "@/lib/ApiStorage";
-import { ART, Team, Sprint, pendingArtEmployee, Award, STORAGE_KEYS, UserRole, UserStatus, User, MyArtEmployee, UserHomePageData } from "@/data/models/Interfaces";
+import { sprintStorage, employeeStorage, artStorage, teamStorage ,UserStorage} from "@/lib/ApiStorage";
+import { ART, Team, Sprint, pendingArtEmployee, STORAGE_KEYS, MyArtEmployee, UserHomePageData } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,6 @@ const ManagerDashboard = () => {
   const [pendingEmployeesRequests, setPendingEmployees] = useState<pendingArtEmployee[]>([]);
   const [allTeamsinMyART, setTeams] = useState<Team[]>([]);
   const [allSprints, setSprints] = useState<Sprint[]>([]);
-  const [allAwards, setAwards] = useState<Award[]>([]);
   const [myARTEmployees, setMyARTEmployees] = useState<MyArtEmployee[]>([]);
   const [homePageData, setHomePageData] = useState<UserHomePageData | null>(null);
   const [isEditingArt, setIsEditingArt] = useState(false);
@@ -95,9 +94,13 @@ const ManagerDashboard = () => {
     
   }, []);
 
+  const handleLogout = async() => {
+    await UserStorage.logoutUser();
+    navigate("/");
+    };
+
   useEffect(() => {
     const user_role = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
-    const user_id = localStorage.getItem(STORAGE_KEYS.USER_ID); 
 
     if (user_role !== 'Art Manager') {
         navigate("/");
@@ -127,7 +130,7 @@ const ManagerDashboard = () => {
               </div>
             </div>
           )}
-          <Button variant="outline" size="sm" onClick={() => { localStorage.clear(); sessionStorage.clear(); navigate("/"); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
+          <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
             <LogOut className="h-4 w-4 mr-1" />Logout
           </Button>
         </div>

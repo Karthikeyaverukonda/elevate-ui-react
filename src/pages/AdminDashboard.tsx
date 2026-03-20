@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { AdminActions, awardStorage } from "@/lib/ApiStorage";
+import { AdminActions, awardStorage,UserStorage } from "@/lib/ApiStorage";
 import { AdminDashboardData, RegisteredARTManager, pendingArtManager, Award, STORAGE_KEYS } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LayoutDashboard, UserCheck, ClipboardCheck, Trophy, Check, X, Plus, Pencil, Trash2, Users, Layers, Award as AwardIcon, Search, LogOut } from "lucide-react";
@@ -46,6 +46,10 @@ const AdminDashboard = () => {
     setAwards(loadedAwards);
   }, []);
 
+  const handlelogout = async() => {
+  await UserStorage.logoutUser();
+  navigate("/");
+  };
   useEffect(() => {
     const userRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
     if (userRole !== "Admin") {
@@ -62,7 +66,7 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage users, awards, ART managers and organisation settings</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => { localStorage.clear(); sessionStorage.clear(); navigate("/"); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
+        <Button variant="outline" size="sm" onClick={async () => { await handlelogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
           <LogOut className="h-4 w-4 mr-1" />Logout
         </Button>
       </div>
