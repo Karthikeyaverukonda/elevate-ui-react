@@ -293,7 +293,27 @@ export const UserStorage = {
     else {
       toast.error('Failed to logout');
     }
+  },
+
+  //if user is updating user role to Art Mangage or Admin, then account will be deactivated and user has to wait for approval from admin to reactivate account, this is to prevent unauthorized users from assigning themselves as Art Manager or Admin
+  updateUserProfile: async (user_login: string, user_firstname: string, user_lastname: string,user_role: string,password: string,user_image: File | null) => {
+    const formData = new FormData();
+    formData.append('user_login', user_login);
+    formData.append('user_firstname', user_firstname);
+    formData.append('user_lastname', user_lastname);
+    formData.append('user_role', user_role);
+    formData.append('password', password);
+    if (user_image) formData.append('user_image', user_image);
+    const response = await apiRequest('PUT', 'users/', undefined, formData, 'Failed to update profile');
+    return response ? response : null;
+  },
+
+  //only admins can delete user profiles
+  deleteUserProfile: async () => {
+    const response = await apiRequest('DELETE', 'users/', undefined, undefined, 'Failed to delete profile');  
+    return response ? response : null;
   }
+
 
 };
 
