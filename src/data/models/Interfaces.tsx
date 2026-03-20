@@ -184,7 +184,8 @@ export interface TeamLevelLeaderboardResponse {
   total_no_of_points: number;
 
   List_of_awards: {
-    award: string;
+    award_name: string;
+    award_image: string;
     total_nomniations_for_award: number;
     nominations_information: {
     nominator: string;
@@ -200,7 +201,8 @@ export interface ARTLevelLeaderboardResponse {
   total_no_of_points: number;
 
   List_of_awards: {
-    award: string;
+    award_name: string;
+    award_image: string;
     total_nomniations_for_award: number;
     nominations_information: {
     nominator: string;
@@ -209,40 +211,7 @@ export interface ARTLevelLeaderboardResponse {
     }[];
   }[];
 }
-export interface TeamLevelLeaderboardResponse {
-  employeename: string;
-  image: string;
-  total_awards: number;
-  total_no_of_points: number;
 
-  List_of_awards: {
-    award: string;
-    total_nomniations_for_award: number;
-
-    nominations_information: {
-      nominator: string;
-      nomination_date: string;
-      comments: string;
-    }[];
-  }[];
-}
-export interface ARTLevelLeaderboardResponse {
-  employeename: string;
-  image: string;
-  total_awards: number;
-  total_no_of_points: number;
-
-  List_of_awards: {
-    award: string;
-    total_nomniations_for_award: number;
-
-    nominations_information: {
-      nominator: string;
-      nomination_date: string;
-      comments: string;
-    }[];
-  }[];
-}
 //TODO
 // create nomination response
 

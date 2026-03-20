@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LeaderboardStorage, UserStorage, teamStorage } from '@/lib/ApiStorage';
+import { LeaderboardStorage } from '@/lib/ApiStorage';
 import { ARTLevelLeaderboardResponse, TeamLevelLeaderboardResponse } from '@/data/models/Interfaces';
 import { STORAGE_KEYS } from '@/data/models/Interfaces';
 
-type LeaderboardResponse = ARTLevelLeaderboardResponse | TeamLevelLeaderboardResponse;
-
+const BASE_MEDIA_URL = "http://127.0.0.1:8000";
 interface AwardDetails {
-  awardName: string;
+  award_name: string;
+  award_image?: string;
   nominations: {
     nominator: string;
     nomination_date: string;
@@ -22,80 +22,16 @@ interface AwardDetails {
 
 export default function LeaderBoard() {
   const [activeTab, setActiveTab] = useState<'art' | 'team'>('art');
-  const [artLeaderboard, setArtLeaderboard] = useState<LeaderboardResponse[]>([]);
-  const [teamLeaderboard, setTeamLeaderboard] = useState<LeaderboardResponse[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
-  const [selectedTeamName, setSelectedTeamName] = useState<string>('');
+  const [artLeaderboard, setArtLeaderboard] = useState<ARTLevelLeaderboardResponse[]>([]);
+  const [teamLeaderboard, setTeamLeaderboard] = useState<TeamLevelLeaderboardResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAwardDetails, setSelectedAwardDetails] = useState<AwardDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [teamFetching, setTeamFetching] = useState(true);
-  const [tokenError, setTokenError] = useState(false);
 
   const artId = localStorage.getItem(STORAGE_KEYS.ART_ID) || '';
   console.log('🟢 LeaderBoard component mounted, artId:', artId);
 
-  // Fetch current user's team on component mount
-  const fetchUserTeam = async () => {
-    setTeamFetching(true);
-    setTokenError(false);
-    try {
-      const userDetails = await UserStorage.getCurrentUserDetails();
-      console.log('===== FULL USER RESPONSE =====');
-      console.log('Full Response:', userDetails);
-      console.log('Response Type:', typeof userDetails);
-      console.log('Response Keys:', userDetails ? Object.keys(userDetails) : 'null/undefined');
-      console.log('================================');
-      
-      // Check for token error
-      if (userDetails?.code === 'token_not_valid' || userDetails?.detail === 'Given token not valid for any token type') {
-        console.warn('❌ Token Error Detected');
-        setTokenError(true);
-        return;
-      }
-      
-      const teamName = userDetails?.team_name;
-      console.log('Team Name from user details:', teamName);
-      
-      if (!teamName) {
-        console.warn('❌ No team_name found in user details');
-        return;
-      }
-
-      // Fetch all teams for the ART to find the team_id by matching team_name
-      const artIdValue = userDetails?.art_id || artId;
-      console.log('Fetching teams for ART:', artIdValue);
-      
-      const teams = await teamStorage.getTeams(artIdValue);
-      console.log('Teams fetched:', teams);
-      
-      // Find the team that matches the user's team_name
-      const userTeam = teams?.find((team: any) => team.team_name === teamName);
-      console.log('Matching team found:', userTeam);
-      
-      if (userTeam) {
-        console.log('✅ Setting team state with:', { 
-          teamId: userTeam.team_id, 
-          teamName: userTeam.team_name 
-        });
-        setSelectedTeamId(userTeam.team_id);
-        setSelectedTeamName(userTeam.team_name);
-      } else {
-        console.warn('❌ Team with name "' + teamName + '" not found in teams list');
-        console.warn('Available teams:', teams?.map((t: any) => t.team_name));
-      }
-    } catch (error) {
-      console.error('❌ Error fetching user team:', error);
-      setTokenError(true);
-    } finally {
-      setTeamFetching(false);
-    }
-  };
-
-  // Fetch user's team on component mount
-  useEffect(() => {
-    fetchUserTeam();
-  }, []);
 
   // Fetch ART Level Leaderboard
   const fetchARTLeaderboard = async () => {
@@ -139,7 +75,8 @@ export default function LeaderBoard() {
         // Transform awards with flexible field name handling
         const awardsArray = item.List_of_awards || item.awards || [];
         const transformedAwards = awardsArray.map((award: any) => ({
-          award: award.award || award.award_name || award.awardName || '',
+          award_name: award.award_name || '',
+          award_image: award.award_image || '',
           total_nomniations_for_award: award.total_nomniations_for_award || award.total_nominations_for_award || 0,
           nominations_information: award.nominations_information || award.nominationsInformation || []
         }));
@@ -165,15 +102,15 @@ export default function LeaderBoard() {
       setArtLeaderboard([]);
     } finally {
       setLoading(false);
+      setTeamFetching(false); // Stop team fetching state in case it was still loading due to user team fetch logic being intertwined with ART fetch in earlier versions
     }
   };
 
   // Fetch Team Level Leaderboard
-  const fetchTeamLeaderboard = async (teamId: string) => {
-    if (!teamId) return;
+  const fetchTeamLeaderboard = async () => {
     setLoading(true);
     try {
-      const data = await LeaderboardStorage.getTeamLevelLeaderboard(teamId);
+      const data = await LeaderboardStorage.getTeamLevelLeaderboard();
       console.log('API Response for Team:', data);
       
       if (!data) {
@@ -210,7 +147,8 @@ export default function LeaderBoard() {
         // Transform awards with flexible field name handling
         const awardsArray = item.List_of_awards || item.awards || [];
         const transformedAwards = awardsArray.map((award: any) => ({
-          award: award.award || award.award_name || award.awardName || '',
+          award_name:award.award_name || '',
+          award_image: award.award_image || '',
           total_nomniations_for_award: award.total_nomniations_for_award || award.total_nominations_for_award || 0,
           nominations_information: award.nominations_information || award.nominationsInformation || []
         }));
@@ -236,28 +174,14 @@ export default function LeaderBoard() {
       setTeamLeaderboard([]);
     } finally {
       setLoading(false);
+      setTeamFetching(false);
     }
   };
-
-  // Sort leaderboard by points in descending order
-  const sortLeaderboardByPoints = (data: any) => {
-    // Ensure data is an array
-    if (!Array.isArray(data)) {
-      console.warn('sortLeaderboardByPoints received non-array data:', data);
-      return [];
-    }
-    return [...data].sort((a, b) => b.total_no_of_points - a.total_no_of_points);
-  };
-
-  // Sort awards by number of nominations in descending order
-  const sortAwardsByNominations = (awards: any[]) => {
-    return [...awards].sort((a, b) => b.total_nomniations_for_award - a.total_nomniations_for_award);
-  };
-
+  
   // Handle award click to show modal
-  const handleAwardClick = (awardName: string, nominations: any[]) => {
+  const handleAwardClick = (award_name: string, nominations: any[]) => {
     setSelectedAwardDetails({
-      awardName,
+      award_name: award_name,
       nominations,
     });
     setIsModalOpen(true);
@@ -272,12 +196,11 @@ export default function LeaderBoard() {
 
   // Effect for Team leaderboard
   useEffect(() => {
-    if (activeTab === 'team' && selectedTeamId) {
-      fetchTeamLeaderboard(selectedTeamId);
+    if (activeTab === 'team') {
+      fetchTeamLeaderboard();
     }
-  }, [selectedTeamId, activeTab]);
+  }, [activeTab]);
 
-  const currentLeaderboard = activeTab === 'art' ? artLeaderboard : teamLeaderboard;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -288,23 +211,6 @@ export default function LeaderBoard() {
           <p className="text-gray-600">Track top performers and their achievements</p>
         </div>
 
-        {/* Token Error Alert */}
-        {tokenError && (
-          <Card className="mb-8 border-red-200 bg-red-50">
-            <CardContent className="pt-6">
-              <div className="text-red-800">
-                <h3 className="font-semibold mb-2">Session Expired</h3>
-                <p className="text-sm mb-4">Your login session has expired. Please log in again to view the leaderboard.</p>
-                <Button 
-                  onClick={() => window.location.href = '/login'}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  Go to Login
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Debug: Show what we're getting from the API */}
         {teamFetching && (
@@ -319,7 +225,7 @@ export default function LeaderBoard() {
         )}
 
         {/* Tabs */}
-        {!tokenError && (
+        { (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'art' | 'team')} defaultValue="art">
           <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="art" className="text-lg">
@@ -355,20 +261,8 @@ export default function LeaderBoard() {
                   Loading your team information...
                 </CardContent>
               </Card>
-            ) : !selectedTeamId ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-gray-500">
-                  You are not assigned to any team yet.
-                </CardContent>
-              </Card>
-            ) : (
+            )  : (
               <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{selectedTeamName} - Leaderboard</CardTitle>
-                    <CardDescription>Top performers in your team</CardDescription>
-                  </CardHeader>
-                </Card>
 
                 {loading ? (
                   <Card>
@@ -401,8 +295,8 @@ function LeaderboardTable({
   data,
   onAwardClick,
 }: {
-  data: LeaderboardResponse[];
-  onAwardClick: (awardName: string, nominations: any[]) => void;
+  data: ARTLevelLeaderboardResponse[];
+  onAwardClick: (award_name: string, nominations: any[]) => void;
 }) {
   if (!data || data.length === 0) {
     return (
@@ -432,7 +326,7 @@ function LeaderboardTable({
                 {/* Employee Info */}
                 <div className="flex items-center gap-4 flex-1">
                   <Avatar className="h-16 w-16 flex-shrink-0">
-                    <AvatarImage src={employeeImage} alt={employeeName} />
+                    <AvatarImage src={BASE_MEDIA_URL + employeeImage} alt={employeeName} />
                     <AvatarFallback>{employeeName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
 
@@ -459,12 +353,16 @@ function LeaderboardTable({
                       sortedAwards.map((award, awardIndex) => (
                         <button
                           key={awardIndex}
-                          onClick={() => onAwardClick(award.award || 'Unknown Award', award.nominations_information || [])}
+                          onClick={() => onAwardClick(award.award_name || 'Unknown Award', award.nominations_information || [])}
                           className="hover:scale-105 transition-transform"
                         >
                           <Badge variant="secondary" className="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-900">
-                            {award.award || 'Award'} ({award.total_nomniations_for_award || 0})
+                            {award.award_name || 'Award'} ({award.total_nomniations_for_award || 0})
                           </Badge>
+                          <Avatar className="h-16 w-16 flex-shrink-0">
+                            <AvatarImage src={award.award_image ? BASE_MEDIA_URL + award.award_image : "/placeholder.svg"} alt={award.award_name} />
+                            <AvatarFallback>{'A'}</AvatarFallback>
+                          </Avatar>
                         </button>
                       ))
                     ) : (
@@ -497,7 +395,7 @@ function AwardDetailsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[70vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{awardDetails.awardName} - Nominations</DialogTitle>
+          <DialogTitle className="text-2xl">{awardDetails.award_name} - Nominations</DialogTitle>
           <DialogDescription>
             Showing all nominations for this award ({awardDetails.nominations.length})
           </DialogDescription>

@@ -36,7 +36,6 @@ export const apiRequest = async (
     }
 
     const response = await fetch(url.toString(), options);
-    console.log("response from API:", response);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || failureMessage);
@@ -257,8 +256,8 @@ export const LeaderboardStorage = {
     return response ? response : [];
   },
 
-  getTeamLevelLeaderboard: async (team_id: string) => {
-    const response = await apiRequest('GET', 'leaderboard-team/', { team_id: team_id }, undefined, 'Failed to fetch Team level leaderboard');
+  getTeamLevelLeaderboard: async () => {
+    const response = await apiRequest('GET', 'leaderboard-team/', undefined, undefined, 'Failed to fetch Team level leaderboard');
     return response ? response : [];
   }
 
@@ -290,7 +289,6 @@ export const UserStorage = {
     if (response) {
       localStorage.clear();
       sessionStorage.clear();
-      console.log('User logged out successfully');
     }
     else {
       toast.error('Failed to logout');
