@@ -177,3 +177,72 @@ export interface UserHomePageData {
   total_nominations_done_in_last_day: number;
   total_active_Employees: number;
 }
+export interface TeamLevelLeaderboardResponse {
+  employeename: string;
+  image: string;
+  total_awards: number;
+  total_no_of_points: number;
+
+  List_of_awards: {
+    award: string;
+    total_nomniations_for_award: number;
+    nominations_information: {
+    nominator: string;
+    nomination_date: string;
+    comments: string;
+    }[];
+  }[];
+}
+export interface ARTLevelLeaderboardResponse {
+  employeename: string;
+  image: string;
+  total_awards: number;
+  total_no_of_points: number;
+
+  List_of_awards: {
+    award: string;
+    total_nomniations_for_award: number;
+    nominations_information: {
+    nominator: string;
+    nomination_date: string;
+    comments: string;
+    }[];
+  }[];
+}
+export interface TeamLevelLeaderboardResponse {
+  employeename: string;
+  image: string;
+  total_awards: number;
+  total_no_of_points: number;
+
+  List_of_awards: {
+    award: string;
+    total_nomniations_for_award: number;
+
+    nominations_information: {
+      nominator: string;
+      nomination_date: string;
+      comments: string;
+    }[];
+  }[];
+}
+export interface ARTLevelLeaderboardResponse {
+  employeename: string;
+  image: string;
+  total_awards: number;
+  total_no_of_points: number;
+
+  List_of_awards: {
+    award: string;
+    total_nomniations_for_award: number;
+
+    nominations_information: {
+      nominator: string;
+      nomination_date: string;
+      comments: string;
+    }[];
+  }[];
+}
+//TODO
+// create nomination response
+

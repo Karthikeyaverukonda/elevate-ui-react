@@ -169,7 +169,7 @@ const EmployeeHome = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-md bg-gradient-to-br from-sky-500 to-blue-600 text-white cursor-pointer hover:shadow-xl transition-shadow">
+          <Card onClick={() => navigate("/leaderboard")} className="border-0 shadow-md bg-gradient-to-br from-sky-500 to-blue-600 text-white cursor-pointer hover:shadow-xl transition-shadow">
             <CardContent className="p-6 flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                 <Star className="h-6 w-6 text-white" />

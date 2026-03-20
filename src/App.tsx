@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import EmployeeHome from "./pages/EmployeeHome";
 import Nominations from "./pages/Nominations";
 import { TokenRefreshStorage } from "@/lib/ApiStorage";
+import LeaderBoard from "./pages/LeaderBoard";
 
 const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 15 minutes
 
@@ -48,6 +49,13 @@ const App = () => {
           path="/manager"
           element={
               <ManagerDashboard />
+          }
+        />
+        {/* Leaderboard route */}
+        <Route
+          path="/leaderboard"
+          element={
+              <LeaderBoard />
           }
         />
 

@@ -257,8 +257,8 @@ export const LeaderboardStorage = {
     return response ? response : [];
   },
 
-  getTeamLevelLeaderboard: async () => {
-    const response = await apiRequest('GET', 'leaderboard-team/', undefined, undefined, 'Failed to fetch Team level leaderboard');
+  getTeamLevelLeaderboard: async (team_id: string) => {
+    const response = await apiRequest('GET', 'leaderboard-team/', { team_id: team_id }, undefined, 'Failed to fetch Team level leaderboard');
     return response ? response : [];
   }
 
