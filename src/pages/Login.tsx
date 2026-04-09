@@ -101,6 +101,14 @@ const Login = () => {
           return response.json();
         })
         .then((data) => {
+          // Check if user account is inactive
+          if (data.user && data.user.is_active === false) {
+            toast.error("Your account is inactive right now. Please contact the administration.");
+            setUserLogin("");
+            setPassword("");
+            return;
+          }
+
           // Store tokens in localStorage
           if (data.access_token) {
             localStorage.setItem('access_token', data.access_token);

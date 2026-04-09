@@ -41,6 +41,11 @@ export const apiRequest = async (
       throw new Error(errorData.error || failureMessage);
     }
 
+    // Handle 204 No Content responses (common for DELETE requests)
+    if (response.status === 204) {
+      return { success: true };
+    }
+
     return await response.json();
   } catch (err: any) {
     toast.error(err?.message || failureMessage);
@@ -77,6 +82,11 @@ export const apiFormDataRequest = async (
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || failureMessage);
+    }
+
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return { success: true };
     }
 
     return await response.json();
@@ -246,6 +256,11 @@ export const AdminActions = {
   updateARTManagerRequestStatus: async (art_manager_id: string, status: 'Approved' | 'Rejected') => {
     const response = await apiRequest('PUT', 'update-art-manager-request/', { art_manager_id: art_manager_id }, { status: status }, 'Failed to update ART manager request status');
     return response ? response : null;
+  },
+
+  getAllUsers: async () => {
+    const response = await apiRequest('GET', 'get-employees-list/', undefined, undefined, 'Failed to fetch employees');
+    return response ? (Array.isArray(response) ? response : response.results || []) : [];
   }
   
 };
@@ -297,21 +312,38 @@ export const UserStorage = {
 
   //if user is updating user role to Art Mangage or Admin, then account will be deactivated and user has to wait for approval from admin to reactivate account, this is to prevent unauthorized users from assigning themselves as Art Manager or Admin
   updateUserProfile: async (user_login: string, user_firstname: string, user_lastname: string,user_role: string,password: string,user_image: File | null) => {
+    const user_id = localStorage.getItem('user_id');
     const formData = new FormData();
     formData.append('user_login', user_login);
     formData.append('user_firstname', user_firstname);
     formData.append('user_lastname', user_lastname);
     formData.append('user_role', user_role);
-    formData.append('password', password);
+    if (password && password.trim()) formData.append('password', password);
     if (user_image) formData.append('user_image', user_image);
-    const response = await apiRequest('PUT', 'users/', undefined, formData, 'Failed to update profile');
+    const queryParams = user_id ? { user_id: user_id } : undefined;
+    const response = await apiFormDataRequest('PUT', 'users/', queryParams, formData, 'Failed to update profile');
     return response ? response : null;
   },
 
-  //only admins can delete user profiles
-  deleteUserProfile: async () => {
-    const response = await apiRequest('DELETE', 'users/', undefined, undefined, 'Failed to delete profile');  
-    return response ? response : null;
+  deactivateUserProfile: async (user_id: string) => {
+    console.log("API Action: deactivate", user_id);
+    const response = await apiRequest('POST','users/deactivate/',{ user_id },{},'Failed to deactivate user');
+    console.log("API Response:", response);
+    return response;
+  },
+
+  activateUserProfile: async (user_id: string) => {
+    console.log("API Action: activate", user_id);
+    const response = await apiRequest('PUT','users/activate/',{},{ user_id },'Failed to activate user');
+    console.log("API Response:", response);
+    return response;
+  },
+
+  deleteUserProfile: async (user_id: string) => {
+    console.log("API Action: delete", user_id);
+    const response = await apiRequest('DELETE','users/',{ user_id },{},'Failed to delete user');
+    console.log("API Response:", response);
+    return response;
   }
 
 
@@ -326,5 +358,5 @@ export const TokenRefreshStorage = {
     } else {
       console.error('Failed to refresh token');
     }
-
-  } }
+  }
+};

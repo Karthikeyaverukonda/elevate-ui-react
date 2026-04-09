@@ -1,3 +1,5 @@
+import { Key } from "node_modules/react-hook-form/dist/types/path/common";
+
 export const STORAGE_KEYS = {
   USER_ID: "user_id",
   USER_LOGIN: "user_login",
@@ -137,6 +139,7 @@ export interface AdminDashboardData {
 }
 
 export interface RegisteredARTManager {
+  user_id: Key | null | undefined;
   user_name: string;
   user_role: string;
   art_name: string;

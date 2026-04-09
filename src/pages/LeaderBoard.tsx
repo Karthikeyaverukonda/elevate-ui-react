@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { LeaderboardStorage } from '@/lib/ApiStorage';
 import { ARTLevelLeaderboardResponse, TeamLevelLeaderboardResponse } from '@/data/models/Interfaces';
 import { STORAGE_KEYS } from '@/data/models/Interfaces';
+import { ArrowLeft, RefreshCw, Trophy, Zap } from 'lucide-react';
 
 const BASE_MEDIA_URL = "http://127.0.0.1:8000";
 interface AwardDetails {
@@ -21,6 +23,7 @@ interface AwardDetails {
 }
 
 export default function LeaderBoard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'art' | 'team'>('art');
   const [artLeaderboard, setArtLeaderboard] = useState<ARTLevelLeaderboardResponse[]>([]);
   const [teamLeaderboard, setTeamLeaderboard] = useState<TeamLevelLeaderboardResponse[]>([]);
@@ -39,7 +42,7 @@ export default function LeaderBoard() {
     setLoading(true);
     try {
       const data = await LeaderboardStorage.getARTLevelLeaderboard(artId);
-      console.log('API Response for ART:', data);
+      console.log('✅ ART Leaderboard data fetched successfully');
       
       if (!data) {
         setArtLeaderboard([]);
@@ -68,7 +71,7 @@ export default function LeaderBoard() {
         }
       }
 
-      console.log('Extracted leaderboardArray:', leaderboardArray, 'length:', leaderboardArray.length);
+      console.log('📊 Total leaderboard entries:', leaderboardArray.length);
 
       // Transform data to match expected interface
       const transformedData = leaderboardArray.map((item: any) => {
@@ -90,10 +93,10 @@ export default function LeaderBoard() {
         };
       });
 
-      console.log('Transformed data:', transformedData);
+      console.log('📈 Transformation complete, entries ready for display');
 
       // Sort by points
-      const sorted = [...transformedData].sort((a, b) => 
+      const sorted = [...transformedData].sort((a, b) =>
         (b.total_no_of_points || 0) - (a.total_no_of_points || 0)
       );
       setArtLeaderboard(sorted);
@@ -111,7 +114,7 @@ export default function LeaderBoard() {
     setLoading(true);
     try {
       const data = await LeaderboardStorage.getTeamLevelLeaderboard();
-      console.log('API Response for Team:', data);
+      console.log('✅ Team Leaderboard data fetched successfully');
       
       if (!data) {
         setTeamLeaderboard([]);
@@ -140,7 +143,7 @@ export default function LeaderBoard() {
         }
       }
 
-      console.log('Extracted leaderboardArray:', leaderboardArray, 'length:', leaderboardArray.length);
+      console.log('📊 Total leaderboard entries:', leaderboardArray.length);
 
       // Transform data to match expected interface
       const transformedData = leaderboardArray.map((item: any) => {
@@ -162,10 +165,10 @@ export default function LeaderBoard() {
         };
       });
 
-      console.log('Transformed data:', transformedData);
+      console.log('📈 Transformation complete, entries ready for display');
 
       // Sort by points
-      const sorted = [...transformedData].sort((a, b) => 
+      const sorted = [...transformedData].sort((a, b) =>
         (b.total_no_of_points || 0) - (a.total_no_of_points || 0)
       );
       setTeamLeaderboard(sorted);
@@ -203,29 +206,40 @@ export default function LeaderBoard() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Leaderboard</h1>
-          <p className="text-gray-600">Track top performers and their achievements</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-8 py-5 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)}
+            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Leaderboard</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Track top performers and their achievements</p>
+          </div>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            if (activeTab === 'art') {
+              fetchARTLeaderboard();
+            } else {
+              fetchTeamLeaderboard();
+            }
+          }}
+          className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />Refresh
+        </Button>
+      </div>
 
-
-        {/* Debug: Show what we're getting from the API */}
-        {teamFetching && (
-          <Card className="mb-8 border-blue-200 bg-blue-50">
-            <CardContent className="pt-6">
-              <div className="text-blue-800">
-                <p className="font-semibold mb-2">🔍 Fetching your team information...</p>
-                <p className="text-sm">Check your browser console (F12) for detailed debug logs</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tabs */}
-        { (
+      <div className="px-8 pb-8 max-w-7xl mx-auto">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'art' | 'team')} defaultValue="art">
           <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="art" className="text-lg">
@@ -281,11 +295,41 @@ export default function LeaderBoard() {
             )}
           </TabsContent>
         </Tabs>
-        )}
       </div>
 
       {/* Award Details Modal */}
       <AwardDetailsModal open={isModalOpen} onOpenChange={setIsModalOpen} awardDetails={selectedAwardDetails} />
+    </div>
+  );
+}
+
+// Component: Position Badge
+function PositionBadge({ position }: { position: number }) {
+  const getPositionColor = () => {
+    switch (position) {
+      case 1:
+        return 'bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 text-white shadow-lg shadow-yellow-400/40';
+      case 2:
+        return 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 text-white shadow-lg shadow-slate-400/40';
+      case 3:
+        return 'bg-gradient-to-br from-orange-300 via-orange-400 to-orange-500 text-white shadow-lg shadow-orange-400/40';
+      default:
+        return 'bg-gradient-to-br from-blue-300 via-indigo-400 to-indigo-500 text-white shadow-lg shadow-indigo-400/40';
+    }
+  };
+
+  const getPositionIcon = () => {
+    switch (position) {
+      case 1: return '🥇';
+      case 2: return '🥈';
+      case 3: return '🥉';
+      default: return position;
+    }
+  };
+
+  return (
+    <div className={`flex items-center justify-center h-14 w-14 rounded-full font-bold text-lg ${getPositionColor()}`}>
+      {getPositionIcon()}
     </div>
   );
 }
@@ -319,57 +363,72 @@ function LeaderboardTable({
           (a, b) => (b.total_nomniations_for_award || 0) - (a.total_nomniations_for_award || 0)
         );
 
+        const isTopThree = index < 3;
+        const cardBgClass = isTopThree
+          ? index === 0
+            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-lg shadow-yellow-200/40'
+            : index === 1
+            ? 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 shadow-lg shadow-slate-200/40'
+            : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 shadow-lg shadow-orange-200/40'
+          : 'bg-white hover:shadow-md border-slate-200';
+
         return (
-          <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
+          <Card key={index} className={`overflow-hidden transition-all ${cardBgClass} border`}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-6">
+                {/* Position Badge - Show for ALL employees */}
+                <PositionBadge position={index + 1} />
+                
                 {/* Employee Info */}
                 <div className="flex items-center gap-4 flex-1">
-                  <Avatar className="h-16 w-16 flex-shrink-0">
+                  <Avatar className={`flex-shrink-0 ring-2 ${index === 0 ? 'h-16 w-16 ring-yellow-300' : index === 1 ? 'h-16 w-16 ring-slate-300' : index === 2 ? 'h-16 w-16 ring-orange-300' : 'h-12 w-12 ring-slate-200'}`}>
                     <AvatarImage src={BASE_MEDIA_URL + employeeImage} alt={employeeName} />
-                    <AvatarFallback>{employeeName.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-400 to-purple-500 text-white font-bold">{employeeName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
 
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{employeeName}</h3>
-                    <div className="flex gap-6 mt-2">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-600">Badges</span>
-                        <span className="text-lg font-bold text-blue-600">{totalAwards}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-semibold truncate ${isTopThree ? 'text-lg text-slate-900' : 'text-base text-slate-800'}`}>{employeeName}</h3>
+                    <div className="flex gap-4 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                        <Trophy className="h-3.5 w-3.5" />
+                        <span className="text-sm font-semibold">{totalAwards} Badges</span>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-600">Points</span>
-                        <span className="text-lg font-bold text-green-600">{totalPoints}</span>
+                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full">
+                        <Zap className="h-3.5 w-3.5" />
+                        <span className="text-sm font-semibold">{totalPoints} Points</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Awards Section */}
-                <div className="flex-1 pl-4 border-l">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Awards</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {sortedAwards.length > 0 ? (
-                      sortedAwards.map((award, awardIndex) => (
+                {sortedAwards.length > 0 && (
+                  <div className="flex-shrink-0">
+                    <div className="flex gap-2 flex-wrap justify-end max-w-xs">
+                      {sortedAwards.slice(0, 3).map((award, awardIndex) => (
                         <button
                           key={awardIndex}
                           onClick={() => onAwardClick(award.award_name || 'Unknown Award', award.nominations_information || [])}
-                          className="hover:scale-105 transition-transform"
+                          className="group relative hover:scale-110 transition-transform"
+                          title={award.award_name}
                         >
-                          <Badge variant="secondary" className="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-900">
-                            {award.award_name || 'Award'} ({award.total_nomniations_for_award || 0})
-                          </Badge>
-                          <Avatar className="h-16 w-16 flex-shrink-0">
+                          <Avatar className="h-10 w-10 ring-2 ring-white hover:ring-indigo-300 shadow-sm group-hover:shadow-md transition-shadow">
                             <AvatarImage src={award.award_image ? BASE_MEDIA_URL + award.award_image : "/placeholder.svg"} alt={award.award_name} />
-                            <AvatarFallback>{'A'}</AvatarFallback>
+                            <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-xs font-bold">{'A'}</AvatarFallback>
                           </Avatar>
+                          <Badge className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs px-1 py-0 h-5 w-5 flex items-center justify-center rounded-full">
+                            {award.total_nomniations_for_award || 0}
+                          </Badge>
                         </button>
-                      ))
-                    ) : (
-                      <span className="text-sm text-gray-400">No awards yet</span>
-                    )}
+                      ))}
+                      {sortedAwards.length > 3 && (
+                        <div className="h-10 w-10 flex items-center justify-center bg-slate-100 rounded-full ring-2 ring-white text-xs font-bold text-slate-600">
+                          +{sortedAwards.length - 3}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

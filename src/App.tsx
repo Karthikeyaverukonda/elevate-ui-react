@@ -36,7 +36,7 @@ const App = () => {
 
 
 
-        {/* Admin route */} 
+        {/* Admin route */}
         { <Route
           path="/admin"
           element={

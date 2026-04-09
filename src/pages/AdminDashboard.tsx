@@ -2,13 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AdminActions, awardStorage,UserStorage } from "@/lib/ApiStorage";
-import { AdminDashboardData, RegisteredARTManager, pendingArtManager, Award, STORAGE_KEYS } from "@/data/models/Interfaces";
+import { AdminDashboardData, RegisteredARTManager, pendingArtManager, Award, STORAGE_KEYS, UserProfileData } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LayoutDashboard, UserCheck, ClipboardCheck, Trophy, Check, X, Plus, Pencil, Trash2, Users, Layers, Award as AwardIcon, Search, LogOut } from "lucide-react";
+import { LayoutDashboard, UserCheck, ClipboardCheck, Trophy, Check, X, Plus, Pencil, Trash2, Users, Layers, Award as AwardIcon, Search, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const BASE_MEDIA_URL = "http://127.0.0.1:8000";
@@ -17,6 +20,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
+  const [adminProfile, setAdminProfile] = useState<UserProfileData | null>(null);
   const [registeredManagers, setRegisteredManagers] = useState<RegisteredARTManager[]>([]);
   const [pendingRequests, setPendingRequests] = useState<pendingArtManager[]>([]);
   const [awards, setAwards] = useState<Award[]>([]);
@@ -32,9 +36,29 @@ const AdminDashboard = () => {
   const [editAwardImage, setEditAwardImage] = useState<File | null>(null);
   const [registeredManagerSearch, setRegisteredManagerSearch] = useState("");
 
+  // User management state
+  const [users, setUsers] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    action: 'deactivate' | 'activate' | 'delete' | null;
+    userId: string | null;
+    userName: string | null;
+  }>({
+    open: false,
+    action: null,
+    userId: null,
+    userName: null
+  });
   const loadData = useCallback(async () => {
     const dashboard = await AdminActions.getAdminDashboardData();
     if (dashboard) setDashboardData(dashboard);
+
+    const profile = await UserStorage.getCurrentUserDetails();
+    if (profile) setAdminProfile(profile);
 
     const managers = await AdminActions.getRegisteredARTManagers();
     setRegisteredManagers(managers);
@@ -44,12 +68,108 @@ const AdminDashboard = () => {
 
     const loadedAwards = await awardStorage.getAwards();
     setAwards(loadedAwards);
+
+    const allUsers = await AdminActions.getAllUsers();
+    console.log("📥 Raw API response for users:", allUsers);
+    
+    // Normalize field names from API response
+    const normalizedUsers = allUsers.map((user: any) => {
+      console.log("📋 Processing user:", user);
+      return {
+        user_id: user.user_id || user.id || user.employee_id || user.userId,
+        user_login: user.user_login || user.login || user.username || user.userName,
+        user_firstname: user.user_firstname || user.first_name || user.firstName || user.employee_name?.split(' ')[0],
+        user_lastname: user.user_lastname || user.last_name || user.lastName || user.employee_name?.split(' ')[1],
+        user_role: user.user_role || user.employee_role || user.role,
+        user_image: user.user_image || user.image,
+        is_active: user.is_active !== undefined ? user.is_active : (user.status === 'Active' ? true : false),
+        // Keep original fields too for reference
+        ...user
+      };
+    });
+    console.log("✅ Normalized users:", normalizedUsers);
+    setUsers(normalizedUsers);
   }, []);
 
   const handlelogout = async() => {
   await UserStorage.logoutUser();
   navigate("/");
   };
+
+  const handleConfirmAction = async () => {
+    const { action, userId } = confirmDialog;
+    
+    console.log("🔍 handleConfirmAction called with:", { action, userId, dialogState: confirmDialog });
+    
+    if (!userId || !action) {
+      console.error("❌ Missing userId or action, returning early");
+      return;
+    }
+
+    const user = users.find(u => u.user_id === userId);
+    if (!user) {
+      console.error("❌ User not found in users list");
+      return;
+    }
+
+    setDeletingUserId(userId);
+    console.log("✅ Set deletingUserId to:", userId);
+
+    try {
+      if (action === 'deactivate') {
+        // Deactivate: mark as inactive in DB using POST users/deactivate/ endpoint
+        console.log(`🟡 Deactivating user ${userId}...`);
+        const result = await UserStorage.deactivateUserProfile(userId);
+        console.log(`✅ Deactivate response:`, result);
+        if (result !== null && result !== undefined) {
+          console.log("✅ Deactivate succeeded, updating UI");
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.user_id === userId ? { ...u, is_active: false, status: 'Inactive' } : u
+            )
+          );
+          toast.success(`User ${user.user_login} deactivated successfully`);
+        } else {
+          console.error('❌ Deactivate failed: result is null or undefined');
+          toast.error(`Failed to deactivate ${user.user_login}. Please try again.`);
+        }
+      } else if (action === 'activate') {
+        // Activate: mark as active in DB using PUT users/ endpoint
+        console.log(`🟡 Activating user ${userId}...`);
+        const result = await UserStorage.activateUserProfile(userId);
+        console.log(`✅ Activate response:`, result);
+        if (result !== null && result !== undefined) {
+          console.log("✅ Activate succeeded, updating UI");
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.user_id === userId ? { ...u, is_active: true, status: 'Active' } : u
+            )
+          );
+          toast.success(`User ${user.user_login} activated successfully`);
+        } else {
+          console.error('❌ Activate failed: result is null or undefined');
+          toast.error(`Failed to activate ${user.user_login}. Please try again.`);
+        }
+      } else if (action === 'delete') {
+        // Delete: completely remove from DB using DELETE users/ endpoint
+        console.log(`🟡 Deleting user ${userId}...`);
+        const result = await UserStorage.deleteUserProfile(userId);
+        console.log(`✅ Delete response:`, result);
+        if (result !== null && result !== undefined) {
+          console.log("✅ Delete succeeded, updating UI");
+          setUsers((prev) => prev.filter((u) => u.user_id !== userId));
+          toast.success(`User ${user.user_login} deleted successfully`);
+        } else {
+          console.error('❌ Delete failed: result is null or undefined');
+          toast.error(`Failed to delete ${user.user_login}. Please try again.`);
+        }
+      }
+    } finally {
+      setDeletingUserId(null);
+      setConfirmDialog({ open: false, action: null, userId: null, userName: null });
+    }
+  };
+
   useEffect(() => {
     const userRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
     if (userRole !== "Admin") {
@@ -66,9 +186,26 @@ const AdminDashboard = () => {
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manage users, awards, ART managers and organisation settings</p>
         </div>
-        <Button variant="outline" size="sm" onClick={async () => { await handlelogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
-          <LogOut className="h-4 w-4 mr-1" />Logout
-        </Button>
+        <div className="flex items-center gap-4">
+          {adminProfile && (
+            <div className="flex items-center gap-3">
+              <img src={adminProfile.image ? BASE_MEDIA_URL + adminProfile.image : "/placeholder.svg"} alt={adminProfile.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-indigo-300" />
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-slate-800">{adminProfile.employee_name}</p>
+                <p className="text-xs text-muted-foreground">Admin</p>
+              </div>
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={async () => { await handlelogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
+            <LogOut className="h-4 w-4 mr-1" />Logout
+          </Button>
+        </div>
       </div>
       <div className="px-8 pb-8">
         <Tabs defaultValue="dashboard" className="w-full">
@@ -76,6 +213,7 @@ const AdminDashboard = () => {
           <TabsTrigger value="dashboard"><LayoutDashboard className="mr-2 h-4 w-4" />Admin Dashboard</TabsTrigger>
           <TabsTrigger value="registered-managers"><UserCheck className="mr-2 h-4 w-4" />Registered Train Managers</TabsTrigger>
           <TabsTrigger value="pending-requests"><ClipboardCheck className="mr-2 h-4 w-4" />Pending Art Manager Requests</TabsTrigger>
+          <TabsTrigger value="manage-users"><Trash2 className="mr-2 h-4 w-4" />Manage Users</TabsTrigger>
           <TabsTrigger value="awards"><Trophy className="mr-2 h-4 w-4" />Awards</TabsTrigger>
         </TabsList>
 
@@ -164,8 +302,8 @@ const AdminDashboard = () => {
                       m.status.toLowerCase().includes(q)
                     );
                   })
-                  .map((manager, idx) => (
-                  <TableRow key={`${manager.user_login}-${idx}`}>
+                  .map((manager) => (
+                  <TableRow key={manager.user_id}>
                     <TableCell>{manager.user_name}</TableCell>
                     <TableCell>{manager.user_login}</TableCell>
                     <TableCell>{manager.user_role}</TableCell>
@@ -259,7 +397,122 @@ const AdminDashboard = () => {
           </div>
         </TabsContent>
 
-        {/* Tab 4: Awards */}
+        {/* Tab 4: Manage Users */}
+        <TabsContent value="manage-users">
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-slate-800">Manage Employees</h2>
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or login..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Image</TableHead>
+                  <TableHead>Login</TableHead>
+                  <TableHead>First Name</TableHead>
+                  <TableHead>Last Name</TableHead>
+                  <TableHead>Employee Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users
+                  .filter((user) => {
+                    // Show all users EXCEPT Admin and Art Manager/Train Manager
+                    const excludedRoles = ["Admin", "Art Manager", "Train Manager"];
+                    return !excludedRoles.includes(user.user_role);
+                  })
+                  .filter((user) =>
+                    (user.user_login || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+                    (user.user_firstname || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+                    (user.user_lastname || '').toLowerCase().includes(userSearch.toLowerCase())
+                  )
+                  .map((user) => (
+                    <TableRow key={user.user_id}>
+                      <TableCell>
+                        <img 
+                          src={user.user_image ? (user.user_image.startsWith('http') ? user.user_image : BASE_MEDIA_URL + user.user_image) : "/placeholder.svg"} 
+                          alt={user.user_login} 
+                          className="h-8 w-8 rounded-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{user.user_login || 'N/A'}</TableCell>
+                      <TableCell>{user.user_firstname || '-'}</TableCell>
+                      <TableCell>{user.user_lastname || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{user.user_role || 'Employee'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => {
+                          console.log("🔘 Switch area clicked for user:", user.user_id);
+                          setConfirmDialog({
+                            open: true,
+                            action: user.is_active ? 'deactivate' : 'activate',
+                            userId: user.user_id,
+                            userName: user.user_login
+                          });
+                        }}>
+                          <Switch
+                            checked={user.is_active}
+                            onCheckedChange={(checked) => {
+                              console.log("🔘 Switch toggled for user:", user.user_id, "to:", checked);
+                              setConfirmDialog({
+                                open: true,
+                                action: checked ? 'activate' : 'deactivate',
+                                userId: user.user_id,
+                                userName: user.user_login
+                              });
+                            }}
+                            className="cursor-pointer"
+                          />
+                          <span className="text-sm font-medium cursor-pointer select-none">
+                            {user.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          onClick={() => {
+                            console.log("🔘 Delete button clicked for user:", user.user_id);
+                            setConfirmDialog({
+                              open: true,
+                              action: 'delete',
+                              userId: user.user_id,
+                              userName: user.user_login
+                            });
+                          }}
+                          disabled={deletingUserId === user.user_id}
+                          className="p-2 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                          title="Delete user permanently"
+                        >
+                          <Trash2 className={`h-4 w-4 ${deletingUserId === user.user_id ? 'text-gray-400' : 'text-red-600'}`} />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {users.filter((user) => !["Admin", "Art Manager", "Train Manager"].includes(user.user_role)).length === 0 && (
+                  <TableRow key="no-employees">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                      No employees found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Tab 5: Awards */}
         <TabsContent value="awards">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
@@ -287,7 +540,7 @@ const AdminDashboard = () => {
               </TableHeader>
               <TableBody>
                 {isCreatingAward && (
-                  <TableRow>
+                  <TableRow key="creating-award">
                     <TableCell>
                       <input
                         type="file"
@@ -421,7 +674,7 @@ const AdminDashboard = () => {
                   </TableRow>
                 ))}
                 {awards.length === 0 && !isCreatingAward && (
-                  <TableRow>
+                  <TableRow key="no-awards">
                     <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
                       No awards found. Create one to get started.
                     </TableCell>
@@ -432,6 +685,49 @@ const AdminDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmDialog({ open: false, action: null, userId: null, userName: null });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDialog.action === 'activate' ? 'Activate User' : confirmDialog.action === 'deactivate' ? 'Deactivate User' : 'Delete User'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDialog.action === 'activate'
+                ? `Are you sure you want to activate ${confirmDialog.userName}? They will be able to access the system again.`
+                : confirmDialog.action === 'deactivate' 
+                ? `Are you sure you want to deactivate ${confirmDialog.userName}?`
+                : `Are you sure you want to permanently delete ${confirmDialog.userName}? This will remove all their data from the database and cannot be undone.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDialog({ open: false, action: null, userId: null, userName: null });
+              }}
+              type="button"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={confirmDialog.action === 'delete' ? 'destructive' : confirmDialog.action === 'activate' ? 'default' : 'default'}
+              onClick={() => handleConfirmAction()}
+              disabled={deletingUserId !== null}
+              type="submit"
+              className="min-w-24"
+            >
+              {deletingUserId ? 'Processing...' : confirmDialog.action === 'activate' ? 'Activate' : confirmDialog.action === 'deactivate' ? 'Deactivate' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );

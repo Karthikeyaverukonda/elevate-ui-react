@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { sprintStorage, employeeStorage, artStorage, teamStorage ,UserStorage} from "@/lib/ApiStorage";
 import { ART, Team, Sprint, pendingArtEmployee, STORAGE_KEYS, MyArtEmployee, UserHomePageData } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut } from "lucide-react";
+import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -130,6 +130,12 @@ const ManagerDashboard = () => {
               </div>
             </div>
           )}
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
             <LogOut className="h-4 w-4 mr-1" />Logout
           </Button>

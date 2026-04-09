@@ -5,10 +5,12 @@ import { UserStorage, artStorage, employeeStorage } from "@/lib/ApiStorage";
 import { UserProfileData, ArtsAndTeamsData, UserHomePageData, STORAGE_KEYS } from "@/data/models/Interfaces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Trophy, Star, Building2, Activity, UserCheck, Zap, LogOut } from "lucide-react";
+import { Users, Trophy, Star, Building2, Activity, UserCheck, Zap, LogOut, Pencil, ArrowLeft, RefreshCw } from "lucide-react";
 
 const BASE_URL = "http://127.0.0.1:8000";
 
@@ -36,6 +38,19 @@ const EmployeeHome = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [joining, setJoining] = useState(false);
 
+  // Edit Profile State
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editData, setEditData] = useState({
+    user_login: "",
+    user_firstname: "",
+    user_lastname: "",
+    user_role: "",
+    password: "",
+    user_image: null as File | null,
+    image_preview: "" as string,
+  });
+
   const loadProfile = useCallback(async () => {
     const data = await UserStorage.getCurrentUserDetails();
     if (data) setProfile(data);
@@ -45,6 +60,60 @@ const EmployeeHome = () => {
     const data = await employeeStorage.getUserHomePageData();
     if (data) setHomePageData(data);
   }, []);
+
+  const handleOpenEditDialog = () => {
+    if (profile) {
+      const storedLogin = localStorage.getItem(STORAGE_KEYS.USER_LOGIN) || "";
+      setEditData({
+        user_login: storedLogin,
+        user_firstname: profile.employee_name?.split(" ")[0] || "",
+        user_lastname: profile.employee_name?.split(" ").slice(1).join(" ") || "",
+        user_role: profile.employee_role || "",
+        password: "",
+        user_image: null,
+        image_preview: profile.image ? BASE_URL + profile.image : "",
+      });
+      setShowEditDialog(true);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditData({ ...editData, user_image: file });
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setEditData((prev) => ({ ...prev, image_preview: event.target?.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editData.user_login.trim() || !editData.user_firstname.trim() || !editData.user_lastname.trim() || !editData.user_role.trim()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setEditLoading(true);
+    const result = await UserStorage.updateUserProfile(
+      editData.user_login,
+      editData.user_firstname,
+      editData.user_lastname,
+      editData.user_role,
+      editData.password.trim(), // Only send password if it's not empty - handled on backend
+      editData.user_image
+    );
+    setEditLoading(false);
+
+    if (result) {
+      toast.success("Profile updated successfully!");
+      setShowEditDialog(false);
+      await loadProfile();
+    } else {
+      toast.error("Failed to update profile");
+    }
+  };
 
   useEffect(() => {
     const userRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
@@ -102,7 +171,16 @@ const EmployeeHome = () => {
               <p className="text-sm font-semibold text-slate-800">{profile.employee_name}</p>
               <p className="text-xs text-muted-foreground">{profile.employee_role}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="ml-2 text-slate-600 hover:text-red-600 hover:border-red-300">
+            <Button variant="outline" size="sm" onClick={handleOpenEditDialog} className="ml-2 text-slate-600 hover:text-indigo-600 hover:border-indigo-300">
+              <Pencil className="h-4 w-4 mr-1" />Edit
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
               <LogOut className="h-4 w-4 mr-1" />Logout
             </Button>
           </div>
@@ -336,6 +414,139 @@ const EmployeeHome = () => {
               disabled={!selectedArtId || !selectedTeamId || joining}
             >
               {joining ? "Joining..." : "Join Team"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Profile Image */}
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={editData.image_preview || "/placeholder.svg"}
+                alt="Profile preview"
+                className="h-24 w-24 rounded-full object-cover ring-2 ring-indigo-300"
+              />
+              <div className="w-full">
+                <Label htmlFor="image" className="text-sm font-medium">
+                  Profile Image
+                </Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Login */}
+            <div>
+              <Label htmlFor="login" className="text-sm font-medium">
+                Login
+              </Label>
+              <Input
+                id="login"
+                value={editData.user_login}
+                onChange={(e) => setEditData({ ...editData, user_login: e.target.value })}
+                placeholder="Enter login"
+                className="mt-1"
+              />
+            </div>
+
+            {/* First Name */}
+            <div>
+              <Label htmlFor="firstname" className="text-sm font-medium">
+                First Name
+              </Label>
+              <Input
+                id="firstname"
+                value={editData.user_firstname}
+                onChange={(e) => setEditData({ ...editData, user_firstname: e.target.value })}
+                placeholder="Enter first name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <Label htmlFor="lastname" className="text-sm font-medium">
+                Last Name
+              </Label>
+              <Input
+                id="lastname"
+                value={editData.user_lastname}
+                onChange={(e) => setEditData({ ...editData, user_lastname: e.target.value })}
+                placeholder="Enter last name"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Role */}
+            <div>
+              <Label htmlFor="role" className="text-sm font-medium">
+                Role
+              </Label>
+              <select
+                id="role"
+                value={editData.user_role}
+                onChange={(e) => setEditData({ ...editData, user_role: e.target.value })}
+                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select a role</option>
+                <option value="Product Manager">Product Manager</option>
+                <option value="Product Owner">Product Owner</option>
+                <option value="Manager">Manager</option>
+                <option value="Scrum Master">Scrum Master</option>
+                <option value="Full Stack Developer">Full Stack Developer</option>
+                <option value="QA">QA</option>
+                <option value="Front-end developer">Front-end developer</option>
+                <option value="Back-end developer">Back-end developer</option>
+                <option value="Devops Engineer">Devops Engineer</option>
+                <option value="PBI developer">PBI developer</option>
+                <option value="Site Reliability Engineer">Site Reliability Engineer</option>
+                <option value="ETL developer">ETL developer</option>
+                <option value="TBA/PDA">TBA/PDA</option>
+                <option value="System Architect">System Architect</option>
+              </select>
+            </div>
+
+            {/* Password */}
+            <div>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password (Optional)
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={editData.password}
+                onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                placeholder="Leave blank to keep current password"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+              disabled={editLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={editLoading}
+            >
+              {editLoading ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
