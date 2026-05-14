@@ -45,7 +45,7 @@ const Nominations = () => {
   }, []);
 
   useEffect(() => {
-    const role = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
+    const role = sessionStorage.getItem(STORAGE_KEYS.USER_ROLE);
     if (role === "Admin") { navigate("/admin"); return; }
     if (role === "Art Manager") { navigate("/manager"); return; }
     loadData();
@@ -159,11 +159,10 @@ const Nominations = () => {
                       <div
                         key={emp.employee_id}
                         onClick={() => setSelectedEmployee(isSelected ? null : emp)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
-                          isSelected
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${isSelected
                             ? "bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 shadow-md"
                             : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
-                        }`}
+                          }`}
                       >
                         <div className="relative flex-shrink-0">
                           <img
@@ -212,11 +211,10 @@ const Nominations = () => {
                       <div
                         key={emp.employee_id}
                         onClick={() => setSelectedEmployee(isSelected ? null : emp)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
-                          isSelected
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${isSelected
                             ? "bg-violet-50 border-violet-400 ring-2 ring-violet-300 shadow-md"
                             : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
-                        }`}
+                          }`}
                       >
                         <div className="relative flex-shrink-0">
                           <img
@@ -269,13 +267,12 @@ const Nominations = () => {
                   <div
                     key={award.award_id}
                     onClick={() => { if (!used) setSelectedAward(isSelected ? null : award); }}
-                    className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ${
-                      used
+                    className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ${used
                         ? "opacity-40 blur-[2px] cursor-not-allowed border-slate-200 bg-slate-50 pointer-events-none"
                         : isSelected
-                        ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-md cursor-pointer"
-                        : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 cursor-pointer shadow-sm"
-                    }`}
+                          ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-md cursor-pointer"
+                          : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 cursor-pointer shadow-sm"
+                      }`}
                   >
                     <img
                       src={award.award_image ? BASE_URL + award.award_image : "/placeholder.svg"}
@@ -327,8 +324,8 @@ const Nominations = () => {
               {!selectedEmployee && !selectedAward
                 ? "Select a teammate and an award to nominate."
                 : !selectedEmployee
-                ? "Select a teammate to nominate."
-                : "Select an award to continue."}
+                  ? "Select a teammate to nominate."
+                  : "Select an award to continue."}
             </p>
           )}
         </div>

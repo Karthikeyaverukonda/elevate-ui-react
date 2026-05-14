@@ -63,7 +63,7 @@ const EmployeeHome = () => {
 
   const handleOpenEditDialog = () => {
     if (profile) {
-      const storedLogin = localStorage.getItem(STORAGE_KEYS.USER_LOGIN) || "";
+      const storedLogin = sessionStorage.getItem(STORAGE_KEYS.USER_LOGIN) || "";
       setEditData({
         user_login: storedLogin,
         user_firstname: profile.employee_name?.split(" ")[0] || "",
@@ -116,7 +116,7 @@ const EmployeeHome = () => {
   };
 
   useEffect(() => {
-    const userRole = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
+    const userRole = sessionStorage.getItem(STORAGE_KEYS.USER_ROLE);
     if (!userRole || userRole === "Admin" || userRole === "Art Manager") {
       navigate("/");
       return;
@@ -149,9 +149,9 @@ const EmployeeHome = () => {
     }
   };
 
-  const handleLogout = async() => {
-  await UserStorage.logoutUser();
-  navigate("/");
+  const handleLogout = async () => {
+    await UserStorage.logoutUser();
+    navigate("/");
   };
 
   return (
@@ -299,8 +299,8 @@ const EmployeeHome = () => {
                 <CardContent className="space-y-2">
                   {homePageData.last_sprint_top5_champions_in_your_art.length > 0
                     ? homePageData.last_sprint_top5_champions_in_your_art.map((c, i) => (
-                        <ChampionCard key={i} name={c.employee_name} image={c.employee_image} nominations={c.no_of_nominations_received} award={c.most_received_award_name} />
-                      ))
+                      <ChampionCard key={i} name={c.employee_name} image={c.employee_image} nominations={c.no_of_nominations_received} award={c.most_received_award_name} />
+                    ))
                     : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                   }
                 </CardContent>
@@ -316,8 +316,8 @@ const EmployeeHome = () => {
                 <CardContent className="space-y-2">
                   {homePageData.art_level_champions_top5.length > 0
                     ? homePageData.art_level_champions_top5.map((c, i) => (
-                        <ChampionCard key={i} name={c.employee_name} image={c.employee_image} nominations={c.no_of_nominations_received} award={c.most_received_award_name} />
-                      ))
+                      <ChampionCard key={i} name={c.employee_name} image={c.employee_image} nominations={c.no_of_nominations_received} award={c.most_received_award_name} />
+                    ))
                     : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                   }
                 </CardContent>
@@ -333,18 +333,18 @@ const EmployeeHome = () => {
                 <CardContent className="space-y-2">
                   {homePageData.organization_level_champions_top5_till_now.length > 0
                     ? homePageData.organization_level_champions_top5_till_now.map((c, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 backdrop-blur border border-white/40 shadow-sm">
-                          <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-300" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{c.team_name} · {c.art_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
-                          </div>
-                          <div className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0">
-                            <Star className="h-3 w-3" />{c.no_of_nominations_received}
-                          </div>
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 backdrop-blur border border-white/40 shadow-sm">
+                        <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-300" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{c.team_name} · {c.art_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
                         </div>
-                      ))
+                        <div className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0">
+                          <Star className="h-3 w-3" />{c.no_of_nominations_received}
+                        </div>
+                      </div>
+                    ))
                     : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                   }
                 </CardContent>

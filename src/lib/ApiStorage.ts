@@ -1,14 +1,23 @@
 import { toast } from "sonner";
 
-import { STORAGE_KEYS} from "@/data/models/Interfaces";
+import { STORAGE_KEYS } from "@/data/models/Interfaces";
 
 
 
 const BASE_API_URL = "http://127.0.0.1:8000/api";
 
+// Helper function to get session-specific storage
+// Uses sessionStorage for per-tab isolation instead of global localStorage
+const getSessionStorage = () => {
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    return window.sessionStorage;
+  }
+  return localStorage; // Fallback for SSR or edge cases
+};
+
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+  'Authorization': `Bearer ${getSessionStorage().getItem('access_token')}`
 });
 
 export const apiRequest = async (
@@ -72,7 +81,7 @@ export const apiFormDataRequest = async (
     const options: RequestInit = {
       method,
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        'Authorization': `Bearer ${getSessionStorage().getItem('access_token')}`
       },
       body: formData,
     };
@@ -103,12 +112,12 @@ export const artStorage = {
   },
 
   createMyArt: async (art_name: string, department: string) => {
-    const response = await apiRequest('POST', 'art/', undefined, { art_name:art_name, department: department ,user:localStorage.getItem('user_id')}, 'Failed to create ART');
+    const response = await apiRequest('POST', 'art/', undefined, { art_name: art_name, department: department, user: getSessionStorage().getItem('user_id') }, 'Failed to create ART');
     return response ? response : null;
   },
 
   updateMyArt: async (art_id: string, art_name: string, department: string) => {
-    const response = await apiRequest('PUT', 'art/', { art_id:art_id }, { art_name: art_name, department: department }, 'Failed to update ART');
+    const response = await apiRequest('PUT', 'art/', { art_id: art_id }, { art_name: art_name, department: department }, 'Failed to update ART');
     return response ? response : null;
   },
 
@@ -117,7 +126,7 @@ export const artStorage = {
     return response ? response : null;
   },
 
-//this API call is to fetch ART and teams data for user home page,to choose which team user wants to join
+  //this API call is to fetch ART and teams data for user home page,to choose which team user wants to join
   getArtAndTeamsData: async () => {
     const response = await apiRequest('GET', 'get-arts-and-teams/', undefined, undefined, 'Failed to fetch ART and teams data');
     return response ? response : null;
@@ -142,7 +151,7 @@ export const teamStorage = {
   },
 
   deleteTeam: async (team_id: string) => {
-    const response = await apiRequest('DELETE', 'teams/', { team_id: team_id}, undefined, 'Failed to delete team');
+    const response = await apiRequest('DELETE', 'teams/', { team_id: team_id }, undefined, 'Failed to delete team');
     return response ? response : null;
   }
 
@@ -152,7 +161,7 @@ export const teamStorage = {
 export const sprintStorage = {
 
   getActiveSprintForART: async () => {
-    const response = await apiRequest('GET', 'get-current-sprint/',undefined, undefined, 'Failed to fetch active sprint');
+    const response = await apiRequest('GET', 'get-current-sprint/', undefined, undefined, 'Failed to fetch active sprint');
     return response ? response : null;
   },
 
@@ -172,7 +181,7 @@ export const sprintStorage = {
   },
 
   deleteSprint: async (sprint_id: string) => {
-    const response = await apiRequest('DELETE', 'sprint/', { sprint_id: sprint_id, art : localStorage.getItem(STORAGE_KEYS.ART_ID) || ''  }, undefined, 'Failed to delete sprint');
+    const response = await apiRequest('DELETE', 'sprint/', { sprint_id: sprint_id, art: getSessionStorage().getItem(STORAGE_KEYS.ART_ID) || '' }, undefined, 'Failed to delete sprint');
     return response ? response : null;
   }
 
@@ -200,10 +209,10 @@ export const awardStorage = {
     const response = await apiFormDataRequest('PUT', 'awards/', { award_id: id }, formData, 'Failed to update award');
     return response ? response : null;
   },
-  deleteAward: async(id: string) => {
+  deleteAward: async (id: string) => {
     const response = await apiRequest('DELETE', 'awards/', { award_id: id }, undefined, 'Failed to delete award');
     return response ? response : null;
-}
+  }
 };
 
 export const employeeStorage = {
@@ -212,16 +221,16 @@ export const employeeStorage = {
     const response = await apiRequest('GET', 'get-user-home-page-data/', undefined, undefined, 'Failed to fetch user homepage data');
     return response ? response : null;
   },
-  
+
   getmyARTEmployees: async (art_id: string) => {
     const response = await apiRequest('GET', 'art-employees/', { art_id }, undefined, 'Failed to fetch employees');
     return response ? response : [];
   },
 
-  joinTeam:async ( team_id: string) => {
+  joinTeam: async (team_id: string) => {
     const response = await apiRequest('POST', 'team-members/', undefined, { team: team_id }, 'Failed to join team');
     return response ? response : null;
-},
+  },
   getPendingEmployeesForArtManager: async (art_id: any) => {
     const response = await apiRequest('GET', 'pending-art-employees/', { art_id: art_id }, undefined, 'Failed to fetch pending employees');
     return response ? response : [];
@@ -231,7 +240,7 @@ export const employeeStorage = {
     return response ? response : null;
   },
   removeEmployeeFromTeam: async (employee_id: string, team_id: string) => {
-    const response = await apiRequest('DELETE', 'team-members/', { employee_id: employee_id},{ team_id: team_id }, 'Failed to remove employee from team');
+    const response = await apiRequest('DELETE', 'team-members/', { employee_id: employee_id }, { team_id: team_id }, 'Failed to remove employee from team');
     return response ? response : null;
   }
 
@@ -262,7 +271,7 @@ export const AdminActions = {
     const response = await apiRequest('GET', 'get-employees-list/', undefined, undefined, 'Failed to fetch employees');
     return response ? (Array.isArray(response) ? response : response.results || []) : [];
   }
-  
+
 };
 
 export const LeaderboardStorage = {
@@ -299,11 +308,10 @@ export const UserStorage = {
     return response ? response : null;
   },
 
-  logoutUser: () => async () => {
+  logoutUser: async () => {
     const response = await apiRequest('POST', 'logout/', undefined, undefined, 'Failed to logout');
     if (response) {
-      localStorage.clear();
-      sessionStorage.clear();
+      getSessionStorage().clear();
     }
     else {
       toast.error('Failed to logout');
@@ -311,8 +319,8 @@ export const UserStorage = {
   },
 
   //if user is updating user role to Art Mangage or Admin, then account will be deactivated and user has to wait for approval from admin to reactivate account, this is to prevent unauthorized users from assigning themselves as Art Manager or Admin
-  updateUserProfile: async (user_login: string, user_firstname: string, user_lastname: string,user_role: string,password: string,user_image: File | null) => {
-    const user_id = localStorage.getItem('user_id');
+  updateUserProfile: async (user_login: string, user_firstname: string, user_lastname: string, user_role: string, password: string, user_image: File | null) => {
+    const user_id = getSessionStorage().getItem('user_id');
     const formData = new FormData();
     formData.append('user_login', user_login);
     formData.append('user_firstname', user_firstname);
@@ -327,21 +335,21 @@ export const UserStorage = {
 
   deactivateUserProfile: async (user_id: string) => {
     console.log("API Action: deactivate", user_id);
-    const response = await apiRequest('POST','users/deactivate/',{ user_id },{},'Failed to deactivate user');
+    const response = await apiRequest('POST', 'users/deactivate/', { user_id }, {}, 'Failed to deactivate user');
     console.log("API Response:", response);
     return response;
   },
 
   activateUserProfile: async (user_id: string) => {
     console.log("API Action: activate", user_id);
-    const response = await apiRequest('PUT','users/activate/',{},{ user_id },'Failed to activate user');
+    const response = await apiRequest('PUT', 'users/activate/', {}, { user_id }, 'Failed to activate user');
     console.log("API Response:", response);
     return response;
   },
 
   deleteUserProfile: async (user_id: string) => {
     console.log("API Action: delete", user_id);
-    const response = await apiRequest('DELETE','users/',{ user_id },{},'Failed to delete user');
+    const response = await apiRequest('DELETE', 'users/', { user_id }, {}, 'Failed to delete user');
     console.log("API Response:", response);
     return response;
   }
@@ -351,9 +359,9 @@ export const UserStorage = {
 
 export const TokenRefreshStorage = {
   refreshToken: async () => {
-    const response = await apiRequest('POST', 'token/refresh/', undefined, { refresh: localStorage.getItem('refresh_token') }, 'Failed to refresh token');
+    const response = await apiRequest('POST', 'token/refresh/', undefined, { refresh: getSessionStorage().getItem('refresh_token') }, 'Failed to refresh token');
     if (response && response.access) {
-      localStorage.setItem('access_token', response.access);
+      getSessionStorage().setItem('access_token', response.access);
       console.log('Token refreshed successfully');
     } else {
       console.error('Failed to refresh token');

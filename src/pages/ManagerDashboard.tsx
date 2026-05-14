@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
-import { sprintStorage, employeeStorage, artStorage, teamStorage ,UserStorage} from "@/lib/ApiStorage";
+import { sprintStorage, employeeStorage, artStorage, teamStorage, UserStorage } from "@/lib/ApiStorage";
 import { ART, Team, Sprint, pendingArtEmployee, STORAGE_KEYS, MyArtEmployee, UserHomePageData } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
@@ -66,15 +66,15 @@ const ManagerDashboard = () => {
   const loadData = useCallback(async () => {
     const myArt = await artStorage.getMyART();
     if (!myArt) {
-        console.error("getMyART returned nothing");
-        return;
+      console.error("getMyART returned nothing");
+      return;
     }
-    localStorage.setItem(STORAGE_KEYS.ART_ID, myArt.art_id);
+    sessionStorage.setItem(STORAGE_KEYS.ART_ID, myArt.art_id);
     console.log("My ART:", myArt);
     setMyART(myArt);
 
     const pendingEmployees = await employeeStorage.getPendingEmployeesForArtManager(myArt.art_id);
-    console.log("Pending Employees:",pendingEmployees);
+    console.log("Pending Employees:", pendingEmployees);
     setPendingEmployees(pendingEmployees);
 
     const myArtTeams = await teamStorage.getTeams(myArt.art_id);
@@ -91,20 +91,20 @@ const ManagerDashboard = () => {
 
     const homeData = await employeeStorage.getUserHomePageData();
     if (homeData) setHomePageData(homeData);
-    
+
   }, []);
 
-  const handleLogout = async() => {
+  const handleLogout = async () => {
     await UserStorage.logoutUser();
     navigate("/");
-    };
+  };
 
   useEffect(() => {
-    const user_role = localStorage.getItem(STORAGE_KEYS.USER_ROLE);
+    const user_role = sessionStorage.getItem(STORAGE_KEYS.USER_ROLE);
 
     if (user_role !== 'Art Manager') {
-        navigate("/");
-        return;
+      navigate("/");
+      return;
     }
     loadData();
 
@@ -155,142 +155,142 @@ const ManagerDashboard = () => {
             <div className="p-6 space-y-8">
               {/* ART Details */}
               <div className="flex justify-center">
-              {myART ? (
-                <Card className="w-full max-w-2xl">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>ART Details</CardTitle>
-                    <div className="flex gap-2">
-                      {!isEditingArt ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditArtName(myART.art_name);
-                              setEditDepartment(myART.department);
-                              setIsEditingArt(true);
-                            }}
-                            className="p-2 rounded-md hover:bg-slate-100 transition-colors"
-                          >
-                            <Pencil className="h-4 w-4 text-slate-600" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const result = await artStorage.deleteMyArt(myART.art_id);
-                              if (result) {
-                                setMyART(null);
-                                toast.success("ART deleted successfully");
+                {myART ? (
+                  <Card className="w-full max-w-2xl">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <CardTitle>ART Details</CardTitle>
+                      <div className="flex gap-2">
+                        {!isEditingArt ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditArtName(myART.art_name);
+                                setEditDepartment(myART.department);
+                                setIsEditingArt(true);
+                              }}
+                              className="p-2 rounded-md hover:bg-slate-100 transition-colors"
+                            >
+                              <Pencil className="h-4 w-4 text-slate-600" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const result = await artStorage.deleteMyArt(myART.art_id);
+                                if (result) {
+                                  setMyART(null);
+                                  toast.success("ART deleted successfully");
+                                }
+                              }}
+                              className="p-2 rounded-md hover:bg-red-100 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={async () => {
+                                const result = await artStorage.updateMyArt(myART.art_id, editArtName, editDepartment);
+                                if (result) {
+                                  setMyART({ ...myART, art_name: editArtName, department: editDepartment });
+                                  toast.success("ART updated successfully");
+                                }
+                                setIsEditingArt(false);
+                              }}
+                              className="p-2 rounded-md hover:bg-green-100 transition-colors"
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </button>
+                            <button
+                              onClick={() => setIsEditingArt(false)}
+                              className="p-2 rounded-md hover:bg-red-100 transition-colors"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">ART Name</p>
+                        {isEditingArt ? (
+                          <Input value={editArtName} onChange={(e) => setEditArtName(e.target.value)} />
+                        ) : (
+                          <p className="font-medium text-slate-800">{myART.art_name}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Department</p>
+                        {isEditingArt ? (
+                          <Input value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} />
+                        ) : (
+                          <p className="font-medium text-slate-800">{myART.department}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Created At</p>
+                        <p className="font-medium text-slate-800">{new Date(myART.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : isCreatingArt ? (
+                  <Card className="w-full max-w-2xl">
+                    <CardHeader>
+                      <CardTitle>Create New ART</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">ART Name</p>
+                        <Input
+                          placeholder="Enter ART name"
+                          value={newArtName}
+                          onChange={(e) => setNewArtName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Department</p>
+                        <Input
+                          placeholder="Enter department"
+                          value={newArtDepartment}
+                          onChange={(e) => setNewArtDepartment(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsCreatingArt(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            const result = await artStorage.createMyArt(newArtName, newArtDepartment);
+                            if (result) {
+                              const freshART = await artStorage.getMyART();
+                              if (freshART) {
+                                setMyART(freshART);
+                                sessionStorage.setItem(STORAGE_KEYS.ART_ID, freshART.art_id);
                               }
-                            }}
-                            className="p-2 rounded-md hover:bg-red-100 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={async () => {
-                              const result = await artStorage.updateMyArt(myART.art_id, editArtName, editDepartment);
-                              if (result) {
-                                setMyART({ ...myART, art_name: editArtName, department: editDepartment });
-                                toast.success("ART updated successfully");
-                              }
-                              setIsEditingArt(false);
-                            }}
-                            className="p-2 rounded-md hover:bg-green-100 transition-colors"
-                          >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </button>
-                          <button
-                            onClick={() => setIsEditingArt(false)}
-                            className="p-2 rounded-md hover:bg-red-100 transition-colors"
-                          >
-                            <X className="h-4 w-4 text-red-600" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-6">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">ART Name</p>
-                      {isEditingArt ? (
-                        <Input value={editArtName} onChange={(e) => setEditArtName(e.target.value)} />
-                      ) : (
-                        <p className="font-medium text-slate-800">{myART.art_name}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Department</p>
-                      {isEditingArt ? (
-                        <Input value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} />
-                      ) : (
-                        <p className="font-medium text-slate-800">{myART.department}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Created At</p>
-                      <p className="font-medium text-slate-800">{new Date(myART.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : isCreatingArt ? (
-                <Card className="w-full max-w-2xl">
-                  <CardHeader>
-                    <CardTitle>Create New ART</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">ART Name</p>
-                      <Input
-                        placeholder="Enter ART name"
-                        value={newArtName}
-                        onChange={(e) => setNewArtName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Department</p>
-                      <Input
-                        placeholder="Enter department"
-                        value={newArtDepartment}
-                        onChange={(e) => setNewArtDepartment(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsCreatingArt(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          const result = await artStorage.createMyArt(newArtName, newArtDepartment);
-                          if (result) {
-                            const freshART = await artStorage.getMyART();
-                            if (freshART) {
-                              setMyART(freshART);
-                              localStorage.setItem(STORAGE_KEYS.ART_ID, freshART.art_id);
+                              toast.success("ART created successfully");
                             }
-                            toast.success("ART created successfully");
-                          }
-                          setIsCreatingArt(false);
-                          setNewArtName("");
-                          setNewArtDepartment("");
-                        }}
-                      >
-                        Create
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <p className="text-muted-foreground">No ART found. Create one to get started.</p>
-                  <Button onClick={() => setIsCreatingArt(true)}>
-                    <Plus className="mr-2 h-4 w-4" />Create ART
-                  </Button>
-                </div>
-              )}
+                            setIsCreatingArt(false);
+                            setNewArtName("");
+                            setNewArtDepartment("");
+                          }}
+                        >
+                          Create
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-muted-foreground">No ART found. Create one to get started.</p>
+                    <Button onClick={() => setIsCreatingArt(true)}>
+                      <Plus className="mr-2 h-4 w-4" />Create ART
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Organisation Pulse */}
@@ -325,15 +325,15 @@ const ManagerDashboard = () => {
                       <CardContent className="space-y-2">
                         {homePageData.last_sprint_top5_champions_in_your_art.length > 0
                           ? homePageData.last_sprint_top5_champions_in_your_art.map((c, i) => (
-                              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                                <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-yellow-300" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
-                                </div>
-                                <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-yellow-300" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
                               </div>
-                            ))
+                              <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            </div>
+                          ))
                           : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                         }
                       </CardContent>
@@ -345,15 +345,15 @@ const ManagerDashboard = () => {
                       <CardContent className="space-y-2">
                         {homePageData.art_level_champions_top5.length > 0
                           ? homePageData.art_level_champions_top5.map((c, i) => (
-                              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                                <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-indigo-300" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
-                                </div>
-                                <span className="flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-indigo-300" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
                               </div>
-                            ))
+                              <span className="flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            </div>
+                          ))
                           : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                         }
                       </CardContent>
@@ -365,16 +365,16 @@ const ManagerDashboard = () => {
                       <CardContent className="space-y-2">
                         {homePageData.organization_level_champions_top5_till_now.length > 0
                           ? homePageData.organization_level_champions_top5_till_now.map((c, i) => (
-                              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                                <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-emerald-300" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{c.team_name} · {c.art_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
-                                </div>
-                                <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-emerald-300" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{c.team_name} · {c.art_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
                               </div>
-                            ))
+                              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                            </div>
+                          ))
                           : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
                         }
                       </CardContent>
@@ -429,7 +429,7 @@ const ManagerDashboard = () => {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={async () => {
-                              const artId = localStorage.getItem(STORAGE_KEYS.ART_ID);
+                              const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID);
                               if (!artId) return;
                               const result = await teamStorage.createTeam(newTeamName, newTeamDescription, artId);
                               if (result) {
@@ -475,7 +475,7 @@ const ManagerDashboard = () => {
                             <>
                               <button
                                 onClick={async () => {
-                                  const artId = localStorage.getItem(STORAGE_KEYS.ART_ID);
+                                  const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID);
                                   if (!artId) return;
                                   const result = await teamStorage.updateTeam(team.team_id, editTeamName, editTeamDescription, artId);
                                   if (result) {
@@ -703,7 +703,7 @@ const ManagerDashboard = () => {
                               if (result) {
                                 setPendingEmployees((prev) => prev.filter((e) => e.employee_id !== emp.employee_id));
                                 toast.success("Employee approved");
-                                const refreshARTemployees = await employeeStorage.getmyARTEmployees(localStorage.getItem(STORAGE_KEYS.ART_ID) || "");
+                                const refreshARTemployees = await employeeStorage.getmyARTEmployees(sessionStorage.getItem(STORAGE_KEYS.ART_ID) || "");
                                 setMyARTEmployees(refreshARTemployees);
 
                               }
@@ -719,7 +719,7 @@ const ManagerDashboard = () => {
                               if (result) {
                                 setPendingEmployees((prev) => prev.filter((e) => e.employee_id !== emp.employee_id));
                                 toast.success("Employee rejected");
-                                const refreshARTemployees = await employeeStorage.getmyARTEmployees(localStorage.getItem(STORAGE_KEYS.ART_ID) || "");
+                                const refreshARTemployees = await employeeStorage.getmyARTEmployees(sessionStorage.getItem(STORAGE_KEYS.ART_ID) || "");
                                 setMyARTEmployees(refreshARTemployees);
                               }
                             }}
@@ -897,7 +897,7 @@ const ManagerDashboard = () => {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={async () => {
-                              const artId = localStorage.getItem(STORAGE_KEYS.ART_ID);
+                              const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID);
                               if (!artId || !newSprintStartDate || !newSprintEndDate) return;
                               const result = await sprintStorage.createSprint(
                                 newSprintName,
@@ -938,185 +938,185 @@ const ManagerDashboard = () => {
                       return sprintSortDir === 'asc' ? cmp : -cmp;
                     })
                     .map((sprint) => (
-                    <TableRow key={sprint.sprint_id} className={sprint.status === 'Active' ? 'bg-green-50 border-l-4 border-l-green-500' : ''}>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Input value={editSprintName} onChange={(e) => setEditSprintName(e.target.value)} />
-                        ) : (
-                          sprint.sprint_name
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Select value={editSprintYear} onValueChange={(v) => { setEditSprintYear(v); setEditSprintStartDate(undefined); setEditSprintEndDate(undefined); }}>
-                            <SelectTrigger className="w-[100px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={String(new Date().getFullYear())}>{new Date().getFullYear()}</SelectItem>
-                              <SelectItem value={String(new Date().getFullYear() + 1)}>{new Date().getFullYear() + 1}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          sprint.year
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {editSprintStartDate ? format(editSprintStartDate, "yyyy-MM-dd") : "Pick date"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={editSprintStartDate}
-                                onSelect={setEditSprintStartDate}
-                                defaultMonth={new Date(Number(editSprintYear), 0)}
-                                fromDate={new Date(Number(editSprintYear), 0, 1)}
-                                toDate={editSprintEndDate || new Date(Number(editSprintYear), 11, 31)}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          sprint.start_date
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {editSprintEndDate ? format(editSprintEndDate, "yyyy-MM-dd") : "Pick date"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={editSprintEndDate}
-                                onSelect={setEditSprintEndDate}
-                                defaultMonth={editSprintStartDate || new Date(Number(editSprintYear), 0)}
-                                fromDate={editSprintStartDate || new Date(Number(editSprintYear), 0, 1)}
-                                toDate={new Date(Number(editSprintYear), 11, 31)}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          sprint.end_date
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Select value={editSprintQuarter} onValueChange={(v) => setEditSprintQuarter(v as '1' | '2' | '3' | '4')}>
-                            <SelectTrigger className="w-[80px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">Q1</SelectItem>
-                              <SelectItem value="2">Q2</SelectItem>
-                              <SelectItem value="3">Q3</SelectItem>
-                              <SelectItem value="4">Q4</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          `Q${sprint.quater}`
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingSprintId === sprint.sprint_id ? (
-                          <Select value={editSprintStatus} onValueChange={(v) => setEditSprintStatus(v as 'Planned' | 'Active' | 'Completed')}>
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Planned">Planned</SelectItem>
-                              <SelectItem value="Active">Active</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          sprint.status
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      <TableRow key={sprint.sprint_id} className={sprint.status === 'Active' ? 'bg-green-50 border-l-4 border-l-green-500' : ''}>
+                        <TableCell>
                           {editingSprintId === sprint.sprint_id ? (
-                            <>
-                              <button
-                                onClick={async () => {
-                                  const artId = localStorage.getItem(STORAGE_KEYS.ART_ID);
-                                  if (!artId || !editSprintStartDate || !editSprintEndDate) return;
-                                  const result = await sprintStorage.updateSprint(
-                                    sprint.sprint_id,
-                                    editSprintName,
-                                    artId,
-                                    editSprintYear,
-                                    format(editSprintStartDate, "yyyy-MM-dd"),
-                                    format(editSprintEndDate, "yyyy-MM-dd"),
-                                    editSprintQuarter,
-                                    editSprintStatus
-                                  );
-                                  if (result) {
-                                    setSprints((prev) =>
-                                      prev.map((s) =>
-                                        s.sprint_id === sprint.sprint_id
-                                          ? { ...s, sprint_name: editSprintName, year: editSprintYear, start_date: format(editSprintStartDate!, "yyyy-MM-dd"), end_date: format(editSprintEndDate!, "yyyy-MM-dd"), quater: editSprintQuarter, status: editSprintStatus }
-                                          : s
-                                      )
-                                    );
-                                    toast.success("Sprint updated successfully");
-                                  }
-                                  setEditingSprintId(null);
-                                }}
-                                className="p-2 rounded-md hover:bg-green-100 transition-colors"
-                              >
-                                <Check className="h-4 w-4 text-green-600" />
-                              </button>
-                              <button
-                                onClick={() => setEditingSprintId(null)}
-                                className="p-2 rounded-md hover:bg-red-100 transition-colors"
-                              >
-                                <X className="h-4 w-4 text-red-600" />
-                              </button>
-                            </>
+                            <Input value={editSprintName} onChange={(e) => setEditSprintName(e.target.value)} />
                           ) : (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setEditingSprintId(sprint.sprint_id);
-                                  setEditSprintName(sprint.sprint_name);
-                                  setEditSprintYear(sprint.year);
-                                  setEditSprintStartDate(new Date(sprint.start_date));
-                                  setEditSprintEndDate(new Date(sprint.end_date));
-                                  setEditSprintQuarter(sprint.quater);
-                                  setEditSprintStatus(sprint.status);
-                                }}
-                                className="p-2 rounded-md hover:bg-slate-100 transition-colors"
-                              >
-                                <Pencil className="h-4 w-4 text-slate-600" />
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  const result = await sprintStorage.deleteSprint(sprint.sprint_id);
-                                  if (result) {
-                                    setSprints((prev) => prev.filter((s) => s.sprint_id !== sprint.sprint_id));
-                                    toast.success("Sprint deleted successfully");
-                                  }
-                                }}
-                                className="p-2 rounded-md hover:bg-red-100 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </button>
-                            </>
+                            sprint.sprint_name
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          {editingSprintId === sprint.sprint_id ? (
+                            <Select value={editSprintYear} onValueChange={(v) => { setEditSprintYear(v); setEditSprintStartDate(undefined); setEditSprintEndDate(undefined); }}>
+                              <SelectTrigger className="w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={String(new Date().getFullYear())}>{new Date().getFullYear()}</SelectItem>
+                                <SelectItem value={String(new Date().getFullYear() + 1)}>{new Date().getFullYear() + 1}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            sprint.year
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSprintId === sprint.sprint_id ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {editSprintStartDate ? format(editSprintStartDate, "yyyy-MM-dd") : "Pick date"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={editSprintStartDate}
+                                  onSelect={setEditSprintStartDate}
+                                  defaultMonth={new Date(Number(editSprintYear), 0)}
+                                  fromDate={new Date(Number(editSprintYear), 0, 1)}
+                                  toDate={editSprintEndDate || new Date(Number(editSprintYear), 11, 31)}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            sprint.start_date
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSprintId === sprint.sprint_id ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {editSprintEndDate ? format(editSprintEndDate, "yyyy-MM-dd") : "Pick date"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                  mode="single"
+                                  selected={editSprintEndDate}
+                                  onSelect={setEditSprintEndDate}
+                                  defaultMonth={editSprintStartDate || new Date(Number(editSprintYear), 0)}
+                                  fromDate={editSprintStartDate || new Date(Number(editSprintYear), 0, 1)}
+                                  toDate={new Date(Number(editSprintYear), 11, 31)}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            sprint.end_date
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSprintId === sprint.sprint_id ? (
+                            <Select value={editSprintQuarter} onValueChange={(v) => setEditSprintQuarter(v as '1' | '2' | '3' | '4')}>
+                              <SelectTrigger className="w-[80px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">Q1</SelectItem>
+                                <SelectItem value="2">Q2</SelectItem>
+                                <SelectItem value="3">Q3</SelectItem>
+                                <SelectItem value="4">Q4</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            `Q${sprint.quater}`
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingSprintId === sprint.sprint_id ? (
+                            <Select value={editSprintStatus} onValueChange={(v) => setEditSprintStatus(v as 'Planned' | 'Active' | 'Completed')}>
+                              <SelectTrigger className="w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Planned">Planned</SelectItem>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            sprint.status
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {editingSprintId === sprint.sprint_id ? (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID);
+                                    if (!artId || !editSprintStartDate || !editSprintEndDate) return;
+                                    const result = await sprintStorage.updateSprint(
+                                      sprint.sprint_id,
+                                      editSprintName,
+                                      artId,
+                                      editSprintYear,
+                                      format(editSprintStartDate, "yyyy-MM-dd"),
+                                      format(editSprintEndDate, "yyyy-MM-dd"),
+                                      editSprintQuarter,
+                                      editSprintStatus
+                                    );
+                                    if (result) {
+                                      setSprints((prev) =>
+                                        prev.map((s) =>
+                                          s.sprint_id === sprint.sprint_id
+                                            ? { ...s, sprint_name: editSprintName, year: editSprintYear, start_date: format(editSprintStartDate!, "yyyy-MM-dd"), end_date: format(editSprintEndDate!, "yyyy-MM-dd"), quater: editSprintQuarter, status: editSprintStatus }
+                                            : s
+                                        )
+                                      );
+                                      toast.success("Sprint updated successfully");
+                                    }
+                                    setEditingSprintId(null);
+                                  }}
+                                  className="p-2 rounded-md hover:bg-green-100 transition-colors"
+                                >
+                                  <Check className="h-4 w-4 text-green-600" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingSprintId(null)}
+                                  className="p-2 rounded-md hover:bg-red-100 transition-colors"
+                                >
+                                  <X className="h-4 w-4 text-red-600" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingSprintId(sprint.sprint_id);
+                                    setEditSprintName(sprint.sprint_name);
+                                    setEditSprintYear(sprint.year);
+                                    setEditSprintStartDate(new Date(sprint.start_date));
+                                    setEditSprintEndDate(new Date(sprint.end_date));
+                                    setEditSprintQuarter(sprint.quater);
+                                    setEditSprintStatus(sprint.status);
+                                  }}
+                                  className="p-2 rounded-md hover:bg-slate-100 transition-colors"
+                                >
+                                  <Pencil className="h-4 w-4 text-slate-600" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const result = await sprintStorage.deleteSprint(sprint.sprint_id);
+                                    if (result) {
+                                      setSprints((prev) => prev.filter((s) => s.sprint_id !== sprint.sprint_id));
+                                      toast.success("Sprint deleted successfully");
+                                    }
+                                  }}
+                                  className="p-2 rounded-md hover:bg-red-100 transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   {allSprints.length === 0 && !isCreatingSprint && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
@@ -1130,7 +1130,7 @@ const ManagerDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>    
+    </div>
   );
 };
 

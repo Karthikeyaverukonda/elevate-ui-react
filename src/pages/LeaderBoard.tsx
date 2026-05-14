@@ -32,7 +32,7 @@ export default function LeaderBoard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [teamFetching, setTeamFetching] = useState(true);
 
-  const artId = localStorage.getItem(STORAGE_KEYS.ART_ID) || '';
+  const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID) || '';
   console.log('🟢 LeaderBoard component mounted, artId:', artId);
 
 
@@ -43,7 +43,7 @@ export default function LeaderBoard() {
     try {
       const data = await LeaderboardStorage.getARTLevelLeaderboard(artId);
       console.log('✅ ART Leaderboard data fetched successfully');
-      
+
       if (!data) {
         setArtLeaderboard([]);
         return;
@@ -115,7 +115,7 @@ export default function LeaderBoard() {
     try {
       const data = await LeaderboardStorage.getTeamLevelLeaderboard();
       console.log('✅ Team Leaderboard data fetched successfully');
-      
+
       if (!data) {
         setTeamLeaderboard([]);
         return;
@@ -150,7 +150,7 @@ export default function LeaderBoard() {
         // Transform awards with flexible field name handling
         const awardsArray = item.List_of_awards || item.awards || [];
         const transformedAwards = awardsArray.map((award: any) => ({
-          award_name:award.award_name || '',
+          award_name: award.award_name || '',
           award_image: award.award_image || '',
           total_nomniations_for_award: award.total_nomniations_for_award || award.total_nominations_for_award || 0,
           nominations_information: award.nominations_information || award.nominationsInformation || []
@@ -180,7 +180,7 @@ export default function LeaderBoard() {
       setTeamFetching(false);
     }
   };
-  
+
   // Handle award click to show modal
   const handleAwardClick = (award_name: string, nominations: any[]) => {
     setSelectedAwardDetails({
@@ -210,9 +210,9 @@ export default function LeaderBoard() {
       {/* Header */}
       <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-8 py-5 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate(-1)}
             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           >
@@ -223,9 +223,9 @@ export default function LeaderBoard() {
             <p className="text-sm text-muted-foreground mt-0.5">Track top performers and their achievements</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => {
             if (activeTab === 'art') {
               fetchARTLeaderboard();
@@ -275,7 +275,7 @@ export default function LeaderBoard() {
                   Loading your team information...
                 </CardContent>
               </Card>
-            )  : (
+            ) : (
               <>
 
                 {loading ? (
@@ -358,7 +358,7 @@ function LeaderboardTable({
         const totalAwards = (employee as any)?.total_awards || 0;
         const totalPoints = (employee as any)?.total_no_of_points || 0;
         const awardsList = (employee as any)?.List_of_awards || [];
-        
+
         const sortedAwards = [...awardsList].sort(
           (a, b) => (b.total_nomniations_for_award || 0) - (a.total_nomniations_for_award || 0)
         );
@@ -368,8 +368,8 @@ function LeaderboardTable({
           ? index === 0
             ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-lg shadow-yellow-200/40'
             : index === 1
-            ? 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 shadow-lg shadow-slate-200/40'
-            : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 shadow-lg shadow-orange-200/40'
+              ? 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 shadow-lg shadow-slate-200/40'
+              : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 shadow-lg shadow-orange-200/40'
           : 'bg-white hover:shadow-md border-slate-200';
 
         return (
@@ -378,7 +378,7 @@ function LeaderboardTable({
               <div className="flex items-center gap-6">
                 {/* Position Badge - Show for ALL employees */}
                 <PositionBadge position={index + 1} />
-                
+
                 {/* Employee Info */}
                 <div className="flex items-center gap-4 flex-1">
                   <Avatar className={`flex-shrink-0 ring-2 ${index === 0 ? 'h-16 w-16 ring-yellow-300' : index === 1 ? 'h-16 w-16 ring-slate-300' : index === 2 ? 'h-16 w-16 ring-orange-300' : 'h-12 w-12 ring-slate-200'}`}>

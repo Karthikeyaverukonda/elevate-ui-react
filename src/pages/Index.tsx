@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Sparkles, ShieldAlert, CheckCircle2, ArrowLeft, ArrowRight, Train, Users, Shield } from "lucide-react";
-import { toast } from "sonner";
-import { UserRole } from "@/lib/ApiStorage";
-
 const Index = () => {
-
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-slate-900 mb-4">Welcome</h1>
+        <p className="text-lg text-slate-600">Loading application...</p>
+      </div>
+    </div>
+  );
 };
 
 export default Index;

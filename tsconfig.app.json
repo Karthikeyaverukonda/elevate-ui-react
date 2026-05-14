@@ -24,7 +24,7 @@
     "noFallthroughCasesInSwitch": true,
     
     /* Fix for Deprecation Warning */
-    "ignoreDeprecations": "5.0",
+    "ignoreDeprecations": "6.0",
     
     "baseUrl": ".",
     "paths": {

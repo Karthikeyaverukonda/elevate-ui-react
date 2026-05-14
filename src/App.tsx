@@ -15,7 +15,7 @@ const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
 
 const App = () => {
   useEffect(() => {
-    if (!localStorage.getItem('access_token')) return;
+    if (!sessionStorage.getItem('access_token')) return;
     const interval = setInterval(() => {
       TokenRefreshStorage.refreshToken();
     }, REFRESH_INTERVAL_MS);
@@ -37,25 +37,25 @@ const App = () => {
 
 
         {/* Admin route */}
-        { <Route
+        {<Route
           path="/admin"
           element={
-              <AdminDashboard />
+            <AdminDashboard />
           }
-        /> }
+        />}
 
         {/* Art Manager route */}
         <Route
           path="/manager"
           element={
-              <ManagerDashboard />
+            <ManagerDashboard />
           }
         />
         {/* Leaderboard route */}
         <Route
           path="/leaderboard"
           element={
-              <LeaderBoard />
+            <LeaderBoard />
           }
         />
 
