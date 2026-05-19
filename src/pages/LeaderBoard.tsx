@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LeaderboardStorage } from '@/lib/ApiStorage';
+import { LeaderboardStorage, CommentsSummaryStorage } from '@/lib/ApiStorage';
 import { ARTLevelLeaderboardResponse, TeamLevelLeaderboardResponse } from '@/data/models/Interfaces';
 import { STORAGE_KEYS } from '@/data/models/Interfaces';
 import { ArrowLeft, RefreshCw, Trophy, Zap } from 'lucide-react';
@@ -22,6 +22,12 @@ interface AwardDetails {
   }[];
 }
 
+interface CommentsSummaryState {
+  employeeName: string;
+  content: string;
+  isLoading: boolean;
+}
+
 export default function LeaderBoard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'art' | 'team'>('art');
@@ -31,6 +37,12 @@ export default function LeaderBoard() {
   const [selectedAwardDetails, setSelectedAwardDetails] = useState<AwardDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [teamFetching, setTeamFetching] = useState(true);
+  const [commentsSummary, setCommentsSummary] = useState<CommentsSummaryState>({
+    employeeName: '',
+    content: '',
+    isLoading: false,
+  });
+  const [isCommentsSummaryOpen, setIsCommentsSummaryOpen] = useState(false);
 
   const artId = sessionStorage.getItem(STORAGE_KEYS.ART_ID) || '';
   console.log('🟢 LeaderBoard component mounted, artId:', artId);
@@ -85,6 +97,7 @@ export default function LeaderBoard() {
         }));
 
         return {
+          employee_id: item.employee_id || item.id || '',
           employeename: item.employee || item.employeename || 'Unknown',
           image: item.image || item.profilePicture || '',
           total_awards: item.nominations_count || item.total_awards || 0,
@@ -157,6 +170,7 @@ export default function LeaderBoard() {
         }));
 
         return {
+          employee_id: item.employee_id || item.id || '',
           employeename: item.employee || item.employeename || 'Unknown',
           image: item.image || item.profilePicture || '',
           total_awards: item.nominations_count || item.total_awards || 0,
@@ -188,6 +202,35 @@ export default function LeaderBoard() {
       nominations,
     });
     setIsModalOpen(true);
+  };
+
+  // Handle comments summary click
+  const handleCommentsClick = async (employeeId: string, employeeName: string) => {
+    console.log('💬 Comments clicked for:', employeeName, 'Employee ID:', employeeId);
+    
+    setCommentsSummary({
+      employeeName: employeeName,
+      content: '',
+      isLoading: true,
+    });
+    setIsCommentsSummaryOpen(true);
+
+    try {
+      const response = await CommentsSummaryStorage.getCommentsSummary(employeeId);
+      console.log('✅ Comments summary response:', response);
+      setCommentsSummary((prev) => ({
+        ...prev,
+        content: response?.summary || 'No comments available',
+        isLoading: false,
+      }));
+    } catch (error) {
+      console.error('Error fetching comments summary:', error);
+      setCommentsSummary((prev) => ({
+        ...prev,
+        content: 'Failed to fetch comments summary',
+        isLoading: false,
+      }));
+    }
   };
 
   // Effect for ART leaderboard
@@ -263,7 +306,7 @@ export default function LeaderBoard() {
                 </CardContent>
               </Card>
             ) : (
-              <LeaderboardTable data={artLeaderboard} onAwardClick={handleAwardClick} />
+              <LeaderboardTable data={artLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} />
             )}
           </TabsContent>
 
@@ -289,7 +332,7 @@ export default function LeaderBoard() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <LeaderboardTable data={teamLeaderboard} onAwardClick={handleAwardClick} />
+                  <LeaderboardTable data={teamLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} />
                 )}
               </>
             )}
@@ -299,6 +342,13 @@ export default function LeaderBoard() {
 
       {/* Award Details Modal */}
       <AwardDetailsModal open={isModalOpen} onOpenChange={setIsModalOpen} awardDetails={selectedAwardDetails} />
+
+      {/* Comments Summary Modal */}
+      <CommentsSummaryModal 
+        open={isCommentsSummaryOpen} 
+        onOpenChange={setIsCommentsSummaryOpen} 
+        commentsSummary={commentsSummary} 
+      />
     </div>
   );
 }
@@ -338,9 +388,11 @@ function PositionBadge({ position }: { position: number }) {
 function LeaderboardTable({
   data,
   onAwardClick,
+  onCommentsClick,
 }: {
   data: ARTLevelLeaderboardResponse[];
   onAwardClick: (award_name: string, nominations: any[]) => void;
+  onCommentsClick: (employeeId: string, employeeName: string) => void;
 }) {
   if (!data || data.length === 0) {
     return (
@@ -429,6 +481,20 @@ function LeaderboardTable({
                     </div>
                   </div>
                 )}
+
+                {/* Comments Summary Button */}
+                <div className="flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onCommentsClick((employee as any)?.employee_id || '', employeeName)}
+                    className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300"
+                    title="View comments summary"
+                  >
+                    <span>💬</span>
+                    <span className="hidden sm:inline">Comments</span>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -490,6 +556,49 @@ function AwardDetailsModal({
             ))
           ) : (
             <p className="text-center text-gray-500 py-8">No nominations found</p>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button onClick={() => onOpenChange(false)}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Component: Comments Summary Modal
+function CommentsSummaryModal({
+  open,
+  onOpenChange,
+  commentsSummary,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  commentsSummary: CommentsSummaryState;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Comments Summary</DialogTitle>
+          <DialogDescription>
+            Summary of comments for {commentsSummary.employeeName}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-6 min-h-[200px] bg-slate-50 rounded-lg p-4 border border-slate-200">
+          {commentsSummary.isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+                <p className="text-gray-600">Loading comments summary...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="prose prose-sm max-w-none">
+              <p className="text-gray-700 whitespace-pre-wrap">{commentsSummary.content}</p>
+            </div>
           )}
         </div>
 

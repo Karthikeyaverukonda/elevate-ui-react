@@ -53,7 +53,10 @@ const EmployeeHome = () => {
 
   const loadProfile = useCallback(async () => {
     const data = await UserStorage.getCurrentUserDetails();
-    if (data) setProfile(data);
+    if (data) {
+      setProfile(data);
+      sessionStorage.setItem(STORAGE_KEYS.ART_ID, data.art_id || "");
+    }
   }, []);
 
   const loadHomePageData = useCallback(async () => {

@@ -268,10 +268,10 @@ export const AdminActions = {
   },
 
   getAllUsers: async () => {
-    const response = await apiRequest('GET', 'get-employees-list/', undefined, undefined, 'Failed to fetch employees');
+    const response = await apiRequest('GET', 'users/', undefined, undefined, 'Failed to fetch employees');
     return response ? (Array.isArray(response) ? response : response.results || []) : [];
   }
-
+ 
 };
 
 export const LeaderboardStorage = {
@@ -366,5 +366,12 @@ export const TokenRefreshStorage = {
     } else {
       console.error('Failed to refresh token');
     }
+  }
+};
+
+ export const CommentsSummaryStorage = {
+  getCommentsSummary: async (nominee_id: string) => {
+    const response = await apiRequest('GET', 'comments-summary/', {nominee_id: nominee_id}, undefined, 'Failed to fetch comments summary');
+    return response ? response : null;
   }
 };
