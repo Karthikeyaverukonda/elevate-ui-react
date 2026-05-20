@@ -5,7 +5,8 @@ import { format } from "date-fns";
 import { sprintStorage, employeeStorage, artStorage, teamStorage, UserStorage } from "@/lib/ApiStorage";
 import { ART, Team, Sprint, pendingArtEmployee, STORAGE_KEYS, MyArtEmployee, UserHomePageData } from "@/data/models/Interfaces";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut, ArrowLeft, RefreshCw } from "lucide-react";
+import { Layers, Users, UserCheck, ClipboardCheck, CalendarRange, Pencil, Check, X, Plus, Trash2, ArrowUpDown, Search, CalendarIcon, Activity, Zap, Star, Building2, LogOut, ArrowLeft, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const BASE_URL = "http://127.0.0.1:8000";
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const [myART, setMyART] = useState<ART | null>(null);
   const [pendingEmployeesRequests, setPendingEmployees] = useState<pendingArtEmployee[]>([]);
@@ -114,29 +116,41 @@ const ManagerDashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-8 py-5 mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">RTM Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage your ART, teams, sprints and approvals</p>
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' 
+      ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+      : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'}`}>
+      <div className={`${theme === 'dark' 
+        ? 'bg-slate-800/80 border-slate-700' 
+        : 'bg-white/80'} backdrop-blur border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} px-8 py-5 mb-6 flex items-center justify-between`}>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className={`${theme === 'dark' 
+            ? 'text-slate-300 hover:text-white hover:bg-slate-700' 
+            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>RTM Dashboard</h1>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} mt-0.5`}>Manage your ART, teams, sprints and approvals</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {myART?.art_manager_image && (
             <div className="flex items-center gap-2">
               <img src={BASE_URL + myART.art_manager_image} alt={myART.art_manager_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-indigo-300" />
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-800">{myART.art_manager_name}</p>
-                <p className="text-xs text-muted-foreground">ART Manager</p>
+                <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{myART.art_manager_name}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>ART Manager</p>
               </div>
             </div>
           )}
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300">
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={toggleTheme} className={`${theme === 'dark' 
+            ? 'text-yellow-400 hover:text-yellow-300 hover:border-yellow-400 border-slate-600 bg-slate-700' 
+            : 'text-slate-600 hover:text-amber-600 hover:border-amber-300'}`}>
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className="text-slate-600 hover:text-red-600 hover:border-red-300">
+          <Button variant="outline" size="sm" onClick={async () => { await handleLogout(); }} className={`${theme === 'dark' 
+            ? 'text-red-400 hover:text-red-300 hover:border-red-400 border-slate-600 bg-slate-700' 
+            : 'text-slate-600 hover:text-red-600 hover:border-red-300'}`}>
             <LogOut className="h-4 w-4 mr-1" />Logout
           </Button>
         </div>
@@ -216,7 +230,7 @@ const ManagerDashboard = () => {
                         {isEditingArt ? (
                           <Input value={editArtName} onChange={(e) => setEditArtName(e.target.value)} />
                         ) : (
-                          <p className="font-medium text-slate-800">{myART.art_name}</p>
+                          <p className="font-medium text-slate-800 dark:text-slate-200">{myART.art_name}</p>
                         )}
                       </div>
                       <div>
@@ -224,12 +238,12 @@ const ManagerDashboard = () => {
                         {isEditingArt ? (
                           <Input value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} />
                         ) : (
-                          <p className="font-medium text-slate-800">{myART.department}</p>
+                          <p className="font-medium text-slate-800 dark:text-slate-200">{myART.department}</p>
                         )}
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Created At</p>
-                        <p className="font-medium text-slate-800">{new Date(myART.created_at).toLocaleDateString()}</p>
+                        <p className="font-medium text-slate-800 dark:text-slate-200">{new Date(myART.created_at).toLocaleDateString()}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -296,86 +310,115 @@ const ManagerDashboard = () => {
               {/* Organisation Pulse */}
               {homePageData && (
                 <div className="mt-8 space-y-6">
-                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Activity className="h-5 w-5 text-indigo-500" />Organisation Pulse</h2>
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Activity className="h-5 w-5 text-indigo-500" />Organisation Pulse</h2>
                   <div className="grid grid-cols-2 gap-4">
-                    <Card className="border-0 shadow-sm bg-white">
+                    <Card className="border-0 shadow-sm bg-white dark:bg-slate-800/80">
                       <CardContent className="p-5 flex items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center"><Zap className="h-6 w-6 text-blue-600" /></div>
                         <div>
-                          <p className="text-2xl font-extrabold text-slate-900">{homePageData.total_nominations_done_in_last_day}</p>
+                          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{homePageData.total_nominations_done_in_last_day}</p>
                           <p className="text-sm text-muted-foreground">Nominations in Last 24h</p>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border-0 shadow-sm bg-white">
+                    <Card className="border-0 shadow-sm bg-white dark:bg-slate-800/80">
                       <CardContent className="p-5 flex items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center"><UserCheck className="h-6 w-6 text-green-600" /></div>
                         <div>
-                          <p className="text-2xl font-extrabold text-slate-900">{homePageData.total_active_Employees}</p>
+                          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{homePageData.total_active_Employees}</p>
                           <p className="text-sm text-muted-foreground">Active Employees</p>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card className="border-0 shadow-md bg-gradient-to-b from-yellow-50 to-white">
+                    <Card className={`border-0 shadow-md ${theme === 'dark'
+                      ? 'bg-gradient-to-b from-yellow-900/30 to-slate-700 border-yellow-700/30'
+                      : 'bg-gradient-to-b from-yellow-50 to-white'}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2 text-yellow-700"><Star className="h-4 w-4" />Last Sprint — ART Top 5</CardTitle>
+                        <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}><Star className="h-4 w-4" />Last Sprint — ART Top 5</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         {homePageData.last_sprint_top5_champions_in_your_art.length > 0
                           ? homePageData.last_sprint_top5_champions_in_your_art.map((c, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-yellow-300" />
+                            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl backdrop-blur border transition-all ${
+                              theme === 'dark'
+                                ? 'bg-slate-600/30 border-slate-500/30 hover:bg-slate-600/40'
+                                : 'bg-white/60 border-white/40 hover:bg-white/80'
+                            } shadow-sm hover:shadow-md`}>
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-yellow-300" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
+                                <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-800'} text-sm truncate`}>{c.employee_name}</p>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{c.most_received_award_name}</p>
                               </div>
-                              <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${
+                                theme === 'dark'
+                                  ? 'bg-yellow-900/40 text-yellow-300'
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}><Star className="h-3 w-3" />{c.no_of_nominations_received}</div>
                             </div>
                           ))
-                          : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
+                          : <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} text-center py-4`}>No data yet</p>
                         }
                       </CardContent>
                     </Card>
-                    <Card className="border-0 shadow-md bg-gradient-to-b from-indigo-50 to-white">
+                    <Card className={`border-0 shadow-md ${theme === 'dark'
+                      ? 'bg-gradient-to-b from-indigo-900/30 to-slate-700 border-indigo-700/30'
+                      : 'bg-gradient-to-b from-indigo-50 to-white'}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2 text-indigo-700"><Star className="h-4 w-4" />ART Level — All Time Top 5</CardTitle>
+                        <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-700'}`}><Star className="h-4 w-4" />ART Level — All Time Top 5</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         {homePageData.art_level_champions_top5.length > 0
                           ? homePageData.art_level_champions_top5.map((c, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-indigo-300" />
+                            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl backdrop-blur border transition-all ${
+                              theme === 'dark'
+                                ? 'bg-slate-600/30 border-slate-500/30 hover:bg-slate-600/40'
+                                : 'bg-white/60 border-white/40 hover:bg-white/80'
+                            } shadow-sm hover:shadow-md`}>
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-indigo-300" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
+                                <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-800'} text-sm truncate`}>{c.employee_name}</p>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{c.most_received_award_name}</p>
                               </div>
-                              <span className="flex items-center gap-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${
+                                theme === 'dark'
+                                  ? 'bg-indigo-900/40 text-indigo-300'
+                                  : 'bg-indigo-100 text-indigo-700'
+                              }`}><Star className="h-3 w-3" />{c.no_of_nominations_received}</div>
                             </div>
                           ))
-                          : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
+                          : <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} text-center py-4`}>No data yet</p>
                         }
                       </CardContent>
                     </Card>
-                    <Card className="border-0 shadow-md bg-gradient-to-b from-emerald-50 to-white">
+                    <Card className={`border-0 shadow-md ${theme === 'dark'
+                      ? 'bg-gradient-to-b from-emerald-900/30 to-slate-700 border-emerald-700/30'
+                      : 'bg-gradient-to-b from-emerald-50 to-white'}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2 text-emerald-700"><Building2 className="h-4 w-4" />Organisation — All Time Top 5</CardTitle>
+                        <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}><Building2 className="h-4 w-4" />Organisation — All Time Top 5</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         {homePageData.organization_level_champions_top5_till_now.length > 0
                           ? homePageData.organization_level_champions_top5_till_now.map((c, i) => (
-                            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/60 border border-white/40 shadow-sm">
-                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-9 w-9 rounded-full object-cover ring-2 ring-emerald-300" />
+                            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl backdrop-blur border transition-all ${
+                              theme === 'dark'
+                                ? 'bg-slate-600/30 border-slate-500/30 hover:bg-slate-600/40'
+                                : 'bg-white/60 border-white/40 hover:bg-white/80'
+                            } shadow-sm hover:shadow-md`}>
+                              <img src={c.employee_image ? BASE_URL + c.employee_image : "/placeholder.svg"} alt={c.employee_name} className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-300" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-slate-800 text-sm truncate">{c.employee_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{c.team_name} · {c.art_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{c.most_received_award_name}</p>
+                                <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-800'} text-sm truncate`}>{c.employee_name}</p>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{c.team_name} · {c.art_name} · {c.most_received_award_name}</p>
                               </div>
-                              <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold shrink-0"><Star className="h-3 w-3" />{c.no_of_nominations_received}</span>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${
+                                theme === 'dark'
+                                  ? 'bg-emerald-900/40 text-emerald-300'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}><Star className="h-3 w-3" />{c.no_of_nominations_received}</div>
                             </div>
                           ))
-                          : <p className="text-sm text-muted-foreground text-center py-4">No data yet</p>
+                          : <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} text-center py-4`}>No data yet</p>
                         }
                       </CardContent>
                     </Card>
@@ -388,7 +431,7 @@ const ManagerDashboard = () => {
           <TabsContent value="teams">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-800">Teams</h2>
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Teams</h2>
                 <Button
                   onClick={() => {
                     setIsCreatingTeam(true);
@@ -542,7 +585,7 @@ const ManagerDashboard = () => {
           <TabsContent value="team-members">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-800">Team Members</h2>
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Team Members</h2>
                 <div className="relative w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -675,7 +718,7 @@ const ManagerDashboard = () => {
 
           <TabsContent value="pending-approvals">
             <div className="p-4">
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">Pending Approvals</h2>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-4">Pending Approvals</h2>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -747,7 +790,7 @@ const ManagerDashboard = () => {
           <TabsContent value="sprints">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-800">Sprints</h2>
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Sprints</h2>
                 <Button
                   onClick={() => {
                     setIsCreatingSprint(true);
@@ -938,7 +981,7 @@ const ManagerDashboard = () => {
                       return sprintSortDir === 'asc' ? cmp : -cmp;
                     })
                     .map((sprint) => (
-                      <TableRow key={sprint.sprint_id} className={sprint.status === 'Active' ? 'bg-green-50 border-l-4 border-l-green-500' : ''}>
+                      <TableRow key={sprint.sprint_id} className={sprint.status === 'Active' ? 'bg-green-50 dark:bg-green-950/20 border-l-4 border-l-green-500' : ''}>
                         <TableCell>
                           {editingSprintId === sprint.sprint_id ? (
                             <Input value={editSprintName} onChange={(e) => setEditSprintName(e.target.value)} />

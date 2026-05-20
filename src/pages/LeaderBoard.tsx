@@ -6,10 +6,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LeaderboardStorage, CommentsSummaryStorage } from '@/lib/ApiStorage';
 import { ARTLevelLeaderboardResponse, TeamLevelLeaderboardResponse } from '@/data/models/Interfaces';
 import { STORAGE_KEYS } from '@/data/models/Interfaces';
-import { ArrowLeft, RefreshCw, Trophy, Zap } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trophy, Zap, Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/hooks/use-theme';
 
 const BASE_MEDIA_URL = "http://127.0.0.1:8000";
 interface AwardDetails {
@@ -30,6 +32,7 @@ interface CommentsSummaryState {
 
 export default function LeaderBoard() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'art' | 'team'>('art');
   const [artLeaderboard, setArtLeaderboard] = useState<ARTLevelLeaderboardResponse[]>([]);
   const [teamLeaderboard, setTeamLeaderboard] = useState<TeamLevelLeaderboardResponse[]>([]);
@@ -249,46 +252,57 @@ export default function LeaderBoard() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'dark' 
+      ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+      : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'}`}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-8 py-5 mb-6 flex items-center justify-between">
+      <div className={`${theme === 'dark' 
+        ? 'bg-slate-800/80 border-slate-700' 
+        : 'bg-white/80'} backdrop-blur border-b ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'} px-8 py-5 mb-6 flex items-center justify-between`}>
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
-            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            className={`${theme === 'dark' 
+              ? 'text-slate-300 hover:text-white hover:bg-slate-700' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Leaderboard</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Track top performers and their achievements</p>
+            <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Leaderboard</h1>
+            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} mt-0.5`}>Track top performers and their achievements</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            if (activeTab === 'art') {
-              fetchARTLeaderboard();
-            } else {
-              fetchTeamLeaderboard();
-            }
-          }}
-          className="text-slate-600 hover:text-indigo-600 hover:border-indigo-300"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />Refresh
-        </Button>
+        {/* Removed Refresh and Theme toggle buttons as requested */}
       </div>
 
-      <div className="px-8 pb-8 max-w-7xl mx-auto">
+      <div className={`px-8 pb-8 max-w-7xl mx-auto`}>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'art' | 'team')} defaultValue="art">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="art" className="text-lg">
+          <TabsList className={`grid w-full grid-cols-2 mb-8 p-1 rounded-xl ${theme === 'dark' 
+            ? 'bg-slate-800/80 border border-slate-700/80' 
+            : 'bg-slate-100 border border-slate-200'}`}>
+            <TabsTrigger value="art" className={`text-lg font-semibold py-3 rounded-lg transition-all duration-200 ${
+              activeTab === 'art' 
+                ? theme === 'dark'
+                  ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
+                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
+                : theme === 'dark'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 border border-transparent'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 border border-transparent'
+            }`}>
               ART Level Leaderboard
             </TabsTrigger>
-            <TabsTrigger value="team" className="text-lg">
+            <TabsTrigger value="team" className={`text-lg font-semibold py-3 rounded-lg transition-all duration-200 ${
+              activeTab === 'team' 
+                ? theme === 'dark'
+                  ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
+                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm'
+                : theme === 'dark'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 border border-transparent'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 border border-transparent'
+            }`}>
               Team Level Leaderboard
             </TabsTrigger>
           </TabsList>
@@ -296,25 +310,25 @@ export default function LeaderBoard() {
           {/* ART Level Leaderboard Tab */}
           <TabsContent value="art" className="space-y-6">
             {loading ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-gray-500">Loading leaderboard...</CardContent>
+              <Card className={`${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white'}`}>
+                <CardContent className={`pt-6 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Loading leaderboard...</CardContent>
               </Card>
             ) : artLeaderboard.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-gray-500">
+              <Card className={`${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white'}`}>
+                <CardContent className={`pt-6 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   No leaderboard data available
                 </CardContent>
               </Card>
             ) : (
-              <LeaderboardTable data={artLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} />
+              <LeaderboardTable data={artLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} theme={theme} />
             )}
           </TabsContent>
 
           {/* Team Level Leaderboard Tab */}
           <TabsContent value="team" className="space-y-6">
             {teamFetching ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-gray-500">
+              <Card className={`${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white'}`}>
+                <CardContent className={`pt-6 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Loading your team information...
                 </CardContent>
               </Card>
@@ -322,17 +336,17 @@ export default function LeaderBoard() {
               <>
 
                 {loading ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-gray-500">Loading leaderboard...</CardContent>
+                  <Card className={`${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white'}`}>
+                    <CardContent className={`pt-6 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Loading leaderboard...</CardContent>
                   </Card>
                 ) : teamLeaderboard.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 text-center text-gray-500">
+                  <Card className={`${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-white'}`}>
+                    <CardContent className={`pt-6 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                       No leaderboard data available for this team
                     </CardContent>
                   </Card>
                 ) : (
-                  <LeaderboardTable data={teamLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} />
+                  <LeaderboardTable data={teamLeaderboard} onAwardClick={handleAwardClick} onCommentsClick={handleCommentsClick} theme={theme} />
                 )}
               </>
             )}
@@ -389,14 +403,16 @@ function LeaderboardTable({
   data,
   onAwardClick,
   onCommentsClick,
+  theme,
 }: {
   data: ARTLevelLeaderboardResponse[];
   onAwardClick: (award_name: string, nominations: any[]) => void;
   onCommentsClick: (employeeId: string, employeeName: string) => void;
+  theme: 'light' | 'dark';
 }) {
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
         <p>No leaderboard data available</p>
       </div>
     );
@@ -418,15 +434,23 @@ function LeaderboardTable({
         const isTopThree = index < 3;
         const cardBgClass = isTopThree
           ? index === 0
-            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-lg shadow-yellow-200/40'
+            ? theme === 'dark'
+              ? 'bg-gradient-to-r from-yellow-900/40 to-amber-900/40 border-yellow-700/30'
+              : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-lg shadow-yellow-200/40'
             : index === 1
-              ? 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 shadow-lg shadow-slate-200/40'
-              : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 shadow-lg shadow-orange-200/40'
-          : 'bg-white hover:shadow-md border-slate-200';
+              ? theme === 'dark'
+                ? 'bg-gradient-to-r from-slate-600/30 to-gray-600/30 border-slate-600/30'
+                : 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 shadow-lg shadow-slate-200/40'
+              : theme === 'dark'
+                ? 'bg-gradient-to-r from-orange-900/40 to-amber-900/40 border-orange-700/30'
+                : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200 shadow-lg shadow-orange-200/40'
+          : theme === 'dark'
+            ? 'bg-slate-700/50 hover:bg-slate-700/70 border-slate-600/50'
+            : 'bg-white hover:shadow-md border-slate-200';
 
         return (
           <Card key={index} className={`overflow-hidden transition-all ${cardBgClass} border`}>
-            <CardContent className="p-6">
+            <CardContent className={`p-6 ${theme === 'dark' ? 'text-slate-100' : ''}`}>
               <div className="flex items-center gap-6">
                 {/* Position Badge - Show for ALL employees */}
                 <PositionBadge position={index + 1} />
@@ -439,13 +463,23 @@ function LeaderboardTable({
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className={`font-semibold truncate ${isTopThree ? 'text-lg text-slate-900' : 'text-base text-slate-800'}`}>{employeeName}</h3>
+                    <h3 className={`font-semibold truncate ${isTopThree 
+                      ? `text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}` 
+                      : `text-base ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}`}>{employeeName}</h3>
                     <div className="flex gap-4 mt-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${
+                        theme === 'dark' 
+                          ? 'bg-blue-900/40 text-blue-300' 
+                          : 'bg-blue-50 text-blue-700'
+                      }`}>
                         <Trophy className="h-3.5 w-3.5" />
                         <span className="text-sm font-semibold">{totalAwards} Badges</span>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full">
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${
+                        theme === 'dark' 
+                          ? 'bg-emerald-900/40 text-emerald-300' 
+                          : 'bg-emerald-50 text-emerald-700'
+                      }`}>
                         <Zap className="h-3.5 w-3.5" />
                         <span className="text-sm font-semibold">{totalPoints} Points</span>
                       </div>
@@ -474,9 +508,40 @@ function LeaderboardTable({
                         </button>
                       ))}
                       {sortedAwards.length > 3 && (
-                        <div className="h-10 w-10 flex items-center justify-center bg-slate-100 rounded-full ring-2 ring-white text-xs font-bold text-slate-600">
-                          +{sortedAwards.length - 3}
-                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className={`h-10 w-10 flex items-center justify-center rounded-full ring-2 text-xs font-bold hover:scale-110 transition-transform ${
+                              theme === 'dark'
+                                ? 'bg-slate-600 ring-slate-500 text-slate-100'
+                                : 'bg-slate-100 ring-white text-slate-600'
+                            }`}>
+                              +{sortedAwards.length - 3}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-xl rounded-lg z-50">
+                            <h4 className="font-semibold text-sm mb-2 text-slate-900 dark:text-slate-100 px-1">Other Badges</h4>
+                            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                              {sortedAwards.slice(3).map((award, awardIndex) => (
+                                <button
+                                  key={awardIndex}
+                                  onClick={() => onAwardClick(award.award_name || 'Unknown Award', award.nominations_information || [])}
+                                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors w-full"
+                                >
+                                  <div className="relative flex-shrink-0">
+                                    <Avatar className="h-8 w-8 ring-2 ring-white dark:ring-slate-700">
+                                      <AvatarImage src={award.award_image ? BASE_MEDIA_URL + award.award_image : "/placeholder.svg"} alt={award.award_name} />
+                                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-xs font-bold">{'A'}</AvatarFallback>
+                                    </Avatar>
+                                    <Badge className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[10px] px-1 py-0 h-4 w-4 flex items-center justify-center rounded-full">
+                                      {award.total_nomniations_for_award || 0}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate flex-1">{award.award_name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                     </div>
                   </div>
@@ -488,7 +553,10 @@ function LeaderboardTable({
                     variant="outline"
                     size="sm"
                     onClick={() => onCommentsClick((employee as any)?.employee_id || '', employeeName)}
-                    className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300"
+                    className={`gap-2 ${theme === 'dark'
+                      ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/30 hover:border-indigo-500/60'
+                      : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300'
+                    }`}
                     title="View comments summary"
                   >
                     <span>💬</span>

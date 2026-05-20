@@ -14,11 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Trophy, Users, UserCheck, Star, CheckCircle2 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 
 const BASE_URL = "http://127.0.0.1:8000";
 
 const Nominations = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const [nominationData, setNominationData] = useState<FetUsersCurrentSprintNomiationDataResponse | null>(null);
   const [awards, setAwards] = useState<Award[]>([]);
@@ -111,22 +113,34 @@ const Nominations = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark'
+        ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white'
+        : 'bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50'
+    }`}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-8 py-5 mb-6 flex items-center justify-between">
+      <div className={`backdrop-blur border-b px-8 py-5 mb-6 flex items-center justify-between transition-colors ${
+        theme === 'dark'
+          ? 'bg-slate-800/80 border-slate-700'
+          : 'bg-white/80 border-slate-200'
+      }`}>
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate("/home")}
-          className="flex items-center gap-2"
+          className={`flex items-center gap-2 ${
+            theme === 'dark'
+              ? 'text-slate-300 hover:text-white border-slate-600 bg-slate-700 hover:bg-slate-600'
+              : ''
+          }`}
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900">Nominate a Teammate</h1>
+          <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Nominate a Teammate</h1>
           {nominationData?.sprint_name && (
-            <p className="text-sm font-semibold text-indigo-600 mt-0.5">
+            <p className={`text-sm font-semibold mt-0.5 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
               Sprint: {nominationData.sprint_name}
             </p>
           )}
@@ -140,12 +154,12 @@ const Nominations = () => {
         {/* Left: Employee Sections */}
         <div className="flex-1 space-y-6 min-w-0">
           {/* Section 1: My Team Members */}
-          <Card className="border-0 shadow-md bg-white">
+          <Card className={`border-0 shadow-md transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white'}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-slate-800">
+              <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                 <UserCheck className="h-5 w-5 text-indigo-500" />
                 My Team Members
-                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                <span className={`ml-auto text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>
                   {nominationData?.user_team_members?.length ?? 0} members
                 </span>
               </CardTitle>
@@ -159,10 +173,15 @@ const Nominations = () => {
                       <div
                         key={emp.employee_id}
                         onClick={() => setSelectedEmployee(isSelected ? null : emp)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${isSelected
-                            ? "bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 shadow-md"
-                            : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
-                          }`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                          isSelected
+                            ? theme === 'dark'
+                              ? "bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/50 shadow-md"
+                              : "bg-indigo-50 border-indigo-400 ring-2 ring-indigo-300 shadow-md"
+                            : theme === 'dark'
+                              ? "bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700 hover:border-slate-500 shadow-sm"
+                              : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                        }`}
                       >
                         <div className="relative flex-shrink-0">
                           <img
@@ -175,29 +194,33 @@ const Nominations = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-semibold text-sm truncate ${isSelected ? "text-indigo-800" : "text-slate-800"}`}>
+                          <p className={`font-semibold text-sm truncate ${
+                            isSelected
+                              ? theme === 'dark' ? "text-indigo-300" : "text-indigo-800"
+                              : theme === 'dark' ? "text-slate-200" : "text-slate-800"
+                          }`}>
                             {emp.employee_name}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">{emp.employee_role}</p>
-                          <p className="text-xs text-muted-foreground truncate">{emp.team_name}</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{emp.employee_role}</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{emp.team_name}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-6">No team members found.</p>
+                <p className={`text-sm text-center py-6 ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>No team members found.</p>
               )}
             </CardContent>
           </Card>
 
           {/* Section 2: Other Team Members */}
-          <Card className="border-0 shadow-md bg-white">
+          <Card className={`border-0 shadow-md transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white'}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-slate-800">
+              <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                 <Users className="h-5 w-5 text-violet-500" />
                 Other Team Members
-                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                <span className={`ml-auto text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>
                   {nominationData?.other_team_members?.length ?? 0} members
                 </span>
               </CardTitle>
@@ -211,10 +234,15 @@ const Nominations = () => {
                       <div
                         key={emp.employee_id}
                         onClick={() => setSelectedEmployee(isSelected ? null : emp)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${isSelected
-                            ? "bg-violet-50 border-violet-400 ring-2 ring-violet-300 shadow-md"
-                            : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
-                          }`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                          isSelected
+                            ? theme === 'dark'
+                              ? "bg-violet-950/40 border-violet-500 ring-2 ring-violet-500/50 shadow-md"
+                              : "bg-violet-50 border-violet-400 ring-2 ring-violet-300 shadow-md"
+                            : theme === 'dark'
+                              ? "bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700 hover:border-slate-500 shadow-sm"
+                              : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                        }`}
                       >
                         <div className="relative flex-shrink-0">
                           <img
@@ -227,18 +255,22 @@ const Nominations = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-semibold text-sm truncate ${isSelected ? "text-violet-800" : "text-slate-800"}`}>
+                          <p className={`font-semibold text-sm truncate ${
+                            isSelected
+                              ? theme === 'dark' ? "text-violet-300" : "text-violet-800"
+                              : theme === 'dark' ? "text-slate-200" : "text-slate-800"
+                          }`}>
                             {emp.employee_name}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">{emp.employee_role}</p>
-                          <p className="text-xs text-muted-foreground truncate">{emp.team_name}</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{emp.employee_role}</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} truncate`}>{emp.team_name}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-6">No other team members found.</p>
+                <p className={`text-sm text-center py-6 ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>No other team members found.</p>
               )}
             </CardContent>
           </Card>
@@ -247,14 +279,14 @@ const Nominations = () => {
         {/* Right: Section 3 — Awards + Submission */}
         <div className="w-80 flex-shrink-0 space-y-4 sticky top-6">
           {/* Awards Panel */}
-          <Card className="border-0 shadow-md bg-white">
+          <Card className={`border-0 shadow-md transition-colors ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white'}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-slate-800">
+              <CardTitle className={`text-base flex items-center gap-2 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
                 <Trophy className="h-5 w-5 text-amber-500" />
                 Select Award
               </CardTitle>
               {nominationData?.awards_already_used?.length ? (
-                <p className="text-xs text-muted-foreground">
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>
                   Blurred awards have already been used this sprint.
                 </p>
               ) : null}
@@ -267,12 +299,19 @@ const Nominations = () => {
                   <div
                     key={award.award_id}
                     onClick={() => { if (!used) setSelectedAward(isSelected ? null : award); }}
-                    className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ${used
-                        ? "opacity-40 blur-[2px] cursor-not-allowed border-slate-200 bg-slate-50 pointer-events-none"
+                    className={`relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ${
+                      used
+                        ? theme === 'dark'
+                          ? "opacity-40 blur-[2px] cursor-not-allowed border-slate-700 bg-slate-800 pointer-events-none"
+                          : "opacity-40 blur-[2px] cursor-not-allowed border-slate-200 bg-slate-50 pointer-events-none"
                         : isSelected
-                          ? "bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-md cursor-pointer"
-                          : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 cursor-pointer shadow-sm"
-                      }`}
+                          ? theme === 'dark'
+                            ? "bg-amber-950/40 border-amber-500 ring-2 ring-amber-500/50 shadow-md cursor-pointer"
+                            : "bg-amber-50 border-amber-400 ring-2 ring-amber-300 shadow-md cursor-pointer"
+                          : theme === 'dark'
+                            ? "bg-slate-700/50 border-slate-600 text-white hover:border-amber-500 hover:bg-amber-950/20 cursor-pointer shadow-sm"
+                            : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 cursor-pointer shadow-sm"
+                    }`}
                   >
                     <img
                       src={award.award_image ? BASE_URL + award.award_image : "/placeholder.svg"}
@@ -280,16 +319,20 @@ const Nominations = () => {
                       className="h-12 w-12 rounded-lg object-cover flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold text-sm truncate ${isSelected && !used ? "text-amber-800" : "text-slate-800"}`}>
+                      <p className={`font-semibold text-sm truncate ${
+                        isSelected && !used
+                          ? theme === 'dark' ? "text-amber-300" : "text-amber-800"
+                          : theme === 'dark' ? "text-slate-200" : "text-slate-800"
+                      }`}>
                         {award.award_name}
                       </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{award.award_description}</p>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} line-clamp-2`}>{award.award_description}</p>
                     </div>
                     {isSelected && !used && (
                       <CheckCircle2 className="h-5 w-5 text-amber-500 flex-shrink-0" />
                     )}
                     {used && (
-                      <span className="absolute top-1.5 right-2 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Used</span>
+                      <span className={`absolute top-1.5 right-2 text-[10px] font-bold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Used</span>
                     )}
                   </div>
                 );
@@ -298,14 +341,18 @@ const Nominations = () => {
                   <div key={award.award_id} className="relative group">
                     {inner}
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                      <span className="bg-slate-800/80 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                      <span className={`text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg ${
+                        theme === 'dark'
+                          ? 'bg-slate-900 text-slate-100 border border-slate-700'
+                          : 'bg-slate-800 text-white'
+                      }`}>
                         You have already used this award
                       </span>
                     </div>
                   </div>
                 ) : inner;
               }) : (
-                <p className="text-sm text-muted-foreground text-center py-6">No awards available.</p>
+                <p className={`text-sm text-center py-6 ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>No awards available.</p>
               )}
             </CardContent>
           </Card>
@@ -320,7 +367,7 @@ const Nominations = () => {
               Confirm Nomination
             </Button>
           ) : (
-            <p className="text-xs text-center text-muted-foreground px-2">
+            <p className={`text-xs text-center px-2 ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>
               {!selectedEmployee && !selectedAward
                 ? "Select a teammate and an award to nominate."
                 : !selectedEmployee
@@ -333,14 +380,18 @@ const Nominations = () => {
 
       {/* Confirm Nomination Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={(open) => { setShowConfirmDialog(open); if (!open) setCommentError(""); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={`sm:max-w-md ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : ''}`}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-indigo-700">
+            <DialogTitle className={`flex items-center gap-2 ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-700'}`}>
               <Star className="h-5 w-5" />Confirm Nomination
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+            <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+              theme === 'dark'
+                ? 'bg-indigo-950/40 border-indigo-900/60'
+                : 'bg-indigo-50 border-indigo-200'
+            }`}>
               {selectedEmployee && (
                 <img
                   src={selectedEmployee.employee_image ? BASE_URL + selectedEmployee.employee_image : "/placeholder.svg"}
@@ -349,11 +400,15 @@ const Nominations = () => {
                 />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{selectedEmployee?.employee_name}</p>
-                <p className="text-xs text-muted-foreground truncate">{selectedEmployee?.employee_role} · {selectedEmployee?.team_name}</p>
+                <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{selectedEmployee?.employee_name}</p>
+                <p className={`text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>{selectedEmployee?.employee_role} · {selectedEmployee?.team_name}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+            <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+              theme === 'dark'
+                ? 'bg-amber-950/40 border-amber-900/60'
+                : 'bg-amber-50 border-amber-200'
+            }`}>
               {selectedAward && (
                 <img
                   src={selectedAward.award_image ? BASE_URL + selectedAward.award_image : "/placeholder.svg"}
@@ -362,20 +417,24 @@ const Nominations = () => {
                 />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-amber-800 truncate">{selectedAward?.award_name}</p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{selectedAward?.award_description}</p>
+                <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-amber-300' : 'text-amber-800'}`}>{selectedAward?.award_name}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'} line-clamp-2`}>{selectedAward?.award_description}</p>
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">
+              <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
                 Comment <span className="text-red-500">*</span>
-                <span className="ml-1 text-xs font-normal text-muted-foreground">(min 10 characters)</span>
+                <span className={`ml-1 text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>(min 10 characters)</span>
               </label>
               <Textarea
                 placeholder="Write a meaningful comment about why you're nominating this person..."
                 value={comments}
                 onChange={(e) => { setComments(e.target.value); if (commentError) setCommentError(validateComment(e.target.value)); }}
-                className={`text-sm resize-none ${commentError ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                className={`text-sm resize-none ${commentError ? "border-red-400 focus-visible:ring-red-400" : ""} ${
+                  theme === 'dark'
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus-visible:ring-indigo-500'
+                    : ''
+                }`}
                 rows={4}
               />
               {commentError && (
@@ -384,7 +443,11 @@ const Nominations = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowConfirmDialog(false); setCommentError(""); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowConfirmDialog(false); setCommentError(""); }} className={
+              theme === 'dark'
+                ? 'border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700 bg-slate-700'
+                : ''
+            }>Cancel</Button>
             <Button
               className="bg-indigo-600 hover:bg-indigo-700"
               onClick={handleSubmit}
