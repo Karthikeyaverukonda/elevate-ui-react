@@ -55,7 +55,19 @@ export const apiRequest = async (
       return { success: true };
     }
 
-    return await response.json();
+    // Handle empty response bodies (e.g., logout endpoint returns 200 with empty body)
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0' || !response.body) {
+      return { success: true };
+    }
+
+    // Try to parse JSON, fallback to success if body is empty
+    const text = await response.text();
+    if (!text) {
+      return { success: true };
+    }
+
+    return JSON.parse(text);
   } catch (err: any) {
     toast.error(err?.message || failureMessage);
     return null;
@@ -98,7 +110,19 @@ export const apiFormDataRequest = async (
       return { success: true };
     }
 
-    return await response.json();
+    // Handle empty response bodies
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0' || !response.body) {
+      return { success: true };
+    }
+
+    // Try to parse JSON, fallback to success if body is empty
+    const text = await response.text();
+    if (!text) {
+      return { success: true };
+    }
+
+    return JSON.parse(text);
   } catch (err: any) {
     toast.error(err?.message || failureMessage);
     return null;
@@ -309,13 +333,8 @@ export const UserStorage = {
   },
 
   logoutUser: async () => {
-    const response = await apiRequest('POST', 'logout/', undefined, undefined, 'Failed to logout');
-    if (response) {
-      getSessionStorage().clear();
-    }
-    else {
-      toast.error('Failed to logout');
-    }
+    await apiRequest('POST', 'logout/', undefined, undefined, 'Failed to logout');
+    getSessionStorage().clear();
   },
 
   //if user is updating user role to Art Mangage or Admin, then account will be deactivated and user has to wait for approval from admin to reactivate account, this is to prevent unauthorized users from assigning themselves as Art Manager or Admin
@@ -335,14 +354,14 @@ export const UserStorage = {
 
   deactivateUserProfile: async (user_id: string) => {
     console.log("API Action: deactivate", user_id);
-    const response = await apiRequest('POST', 'users/deactivate/', { user_id }, {}, 'Failed to deactivate user');
+    const response = await apiRequest('POST', 'changeEmployeeStatus/', {user_id: user_id, status: 'deactivate' }, {}, 'Failed to deactivate user');
     console.log("API Response:", response);
     return response;
   },
 
   activateUserProfile: async (user_id: string) => {
     console.log("API Action: activate", user_id);
-    const response = await apiRequest('PUT', 'users/activate/', {}, { user_id }, 'Failed to activate user');
+    const response = await apiRequest('POST', 'changeEmployeeStatus/', { user_id:user_id,status: 'activate' },{}, 'Failed to activate user');
     console.log("API Response:", response);
     return response;
   },

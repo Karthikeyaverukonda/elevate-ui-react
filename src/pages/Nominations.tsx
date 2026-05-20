@@ -57,6 +57,12 @@ const Nominations = () => {
     nominationData?.awards_already_used?.some((a) => a.award_id === award.award_id) ?? false;
 
   const validateComment = (value: string) => {
+    // Check for excessive special characters
+    const specialChars = (value.match(/[^a-zA-Z0-9\s]/g) || []).length;
+    if (specialChars > value.length * 0.3) {
+      return `Too many special characters (${specialChars}). Please use meaningful text.`;
+    }
+
     const stripped = value.replace(/[^a-zA-Z0-9\s]/g, "").trim();
     if (!stripped) return "Comment is required.";
     if (stripped.length < 10) return `Comment must have at least 10 characters (currently ${stripped.length}).`;
@@ -65,8 +71,17 @@ const Nominations = () => {
     const words = stripped.split(/\s+/).filter(Boolean);
     if (words.length < 2) return "Comment must contain at least 2 words.";
 
-    // No 4+ consecutive identical characters (e.g. "aaaa", "1111")
-    if (/(.)\1{3,}/.test(stripped)) return "Comment appears to contain repeated characters. Please write a meaningful comment.";
+    // Check for repeated letters (more than 3 consecutive)
+    const repeatedLetters = stripped.match(/([a-zA-Z])\1{3,}/g);
+    if (repeatedLetters) {
+      return `Repeated letters detected: "${repeatedLetters[0]}". Please write a meaningful comment.`;
+    }
+
+    // Check for repeated numbers (more than 3 consecutive)
+    const repeatedNumbers = stripped.match(/(\d)\1{3,}/g);
+    if (repeatedNumbers) {
+      return `Repeated numbers detected. Please avoid excessive repetition.`;
+    }
 
     // No keyboard row walks of 5+ characters
     const keyboardRows = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "poiuytrewq", "lkjhgfdsa", "mnbvcxz"];
@@ -75,6 +90,21 @@ const Nominations = () => {
       for (let i = 0; i <= row.length - 5; i++) {
         if (lower.includes(row.slice(i, i + 5))) return "Comment appears to be a keyboard sequence. Please write a meaningful comment.";
       }
+    }
+
+    // Check for common meaningless word patterns
+    const commonFiller = ["aaaa", "bbbb", "cccc", "dddd", "eeee", "ffff", "gggg", "hhhh", "iiii", "jjjj", "kkkk", "llll", "mmmm", "nnnn", "oooo", "pppp", "qqqq", "rrrr", "ssss", "tttt", "uuuu", "vvvv", "wwww", "xxxx", "yyyy", "zzzz", "test", "asdf", "qwer"];
+    for (const filler of commonFiller) {
+      if (lower.includes(filler)) {
+        const word = filler === "test" || filler === "asdf" || filler === "qwer" ? `"${filler}"` : "repeated pattern";
+        return `Comment appears to contain non-meaningful text (${word}). Please write something genuine.`;
+      }
+    }
+
+    // Check each word has meaningful length (not just single letters)
+    const tooShortWords = words.filter(w => w.length === 1);
+    if (tooShortWords.length > words.length * 0.5) {
+      return "Too many single-letter words. Please write complete words.";
     }
 
     // Must have at least 5 unique alphanumeric characters
@@ -426,20 +456,48 @@ const Nominations = () => {
                 Comment <span className="text-red-500">*</span>
                 <span className={`ml-1 text-xs font-normal ${theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'}`}>(min 10 characters)</span>
               </label>
-              <Textarea
-                placeholder="Write a meaningful comment about why you're nominating this person..."
-                value={comments}
-                onChange={(e) => { setComments(e.target.value); if (commentError) setCommentError(validateComment(e.target.value)); }}
-                className={`text-sm resize-none ${commentError ? "border-red-400 focus-visible:ring-red-400" : ""} ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus-visible:ring-indigo-500'
-                    : ''
-                }`}
-                rows={4}
-              />
-              {commentError && (
-                <p className="text-xs text-red-500">{commentError}</p>
-              )}
+              <div className="relative">
+                <Textarea
+                  placeholder="Write a meaningful comment about why you're nominating this person..."
+                  value={comments}
+                  onChange={(e) => { setComments(e.target.value); if (commentError) setCommentError(validateComment(e.target.value)); }}
+                  className={`text-sm resize-none pr-10 ${commentError ? "border-red-400 focus-visible:ring-red-400 bg-red-50/30" : "border-green-300 bg-green-50/30"} ${
+                    theme === 'dark'
+                      ? `${commentError ? 'bg-red-950/20 border-red-700 focus-visible:ring-red-600' : 'bg-green-950/20 border-green-700 focus-visible:ring-green-600'} text-white placeholder-slate-400`
+                      : ''
+                  }`}
+                  rows={4}
+                />
+                {comments && (
+                  <div className="absolute right-3 top-3">
+                    {commentError ? (
+                      <span className="text-lg">❌</span>
+                    ) : (
+                      <span className="text-lg">✅</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className={`text-xs space-y-0.5 ${commentError ? 'text-red-500' : 'text-green-600'}`}>
+                {commentError ? (
+                  <p className="font-medium">⚠️ {commentError}</p>
+                ) : comments ? (
+                  <p className="font-medium">✓ Comment looks good!</p>
+                ) : (
+                  <p className="text-slate-500">Please enter a comment to continue</p>
+                )}
+                <div className={`flex gap-2 text-[11px] mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <span className={comments.length >= 10 ? 'text-green-600 font-medium' : ''}>
+                    {comments.length >= 10 ? '✓' : '○'} Length: {comments.length}/10 chars
+                  </span>
+                  {comments && (
+                    <>
+                      <span>•</span>
+                      <span>{comments.split(/\s+/).filter(Boolean).length} words</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

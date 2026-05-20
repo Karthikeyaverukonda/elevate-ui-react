@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,11 @@ import { UserRole } from "@/data/models/Interfaces";
 
 const Login = () => {
   const navigate = useNavigate();
+  // Ensure login page always uses light theme
+  useEffect(() => {
+    const htmlElement = document.documentElement;
+    htmlElement.classList.remove('dark');
+  }, []);
   const [isSignUp, setIsSignUp] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>();
   const [userDesignation, setUserDesignation] = useState("");
@@ -255,15 +260,15 @@ const Login = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-800">First Name</label>
-                      <Input placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="h-11 border-slate-200" />
+                      <Input placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="h-11 border-slate-200 bg-white text-slate-900" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-800">Last Name</label>
-                      <Input placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="h-11 border-slate-200" />
+                      <Input placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="h-11 border-slate-200 bg-white text-slate-900" />
                     </div>
                     <div className="space-y-1.5 col-span-2">
                       <label className="text-xs font-bold text-slate-800">User Login/User Name</label>
-                      <Input placeholder="John Doe" value={userLogin} onChange={(e) => setUserLogin(e.target.value)} required className="h-11 border-slate-200" />
+                      <Input placeholder="John Doe" value={userLogin} onChange={(e) => setUserLogin(e.target.value)} required className="h-11 border-slate-200 bg-white text-slate-900" />
                     </div>
                     {/* Show Designation only if selectedRole is 'Employee' */}
                     {selectedRole === 'Employee' && (
@@ -302,7 +307,7 @@ const Login = () => {
                     )}
                     <div className="space-y-1.5 col-span-2">
                       <label className="text-xs font-bold text-slate-800">Profile Image</label>
-                      <Input className="h-11 border-slate-200 w-full rounded-lg px-4 py-2 bg-white text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                      <Input className="h-11 border-slate-200 w-full rounded-lg px-4 py-2 bg-white text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         type="file"
                         accept=".jpg,.jpeg,.png"
                         onChange={(e) => {
@@ -326,13 +331,13 @@ const Login = () => {
                 ) : (
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-800">User Login/User Name</label>
-                    <Input placeholder="John Doe" value={userLogin} onChange={(e) => setUserLogin(e.target.value)} required className="h-11 border-slate-200" />
+                    <Input placeholder="John Doe" value={userLogin} onChange={(e) => setUserLogin(e.target.value)} required className="h-11 border-slate-200 bg-white text-slate-900" />
                   </div>
                 )}
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-800">Password</label>
-                  <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-11 border-slate-200" />
+                  <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-11 border-slate-200 bg-white text-slate-900" />
                 </div>
 
                 {isSignUp ? (

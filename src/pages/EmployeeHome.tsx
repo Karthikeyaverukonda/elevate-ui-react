@@ -161,8 +161,16 @@ const EmployeeHome = () => {
   };
 
   const handleLogout = async () => {
-    await UserStorage.logoutUser();
-    navigate("/");
+    try {
+      const result = await UserStorage.logoutUser();
+      if (result !== null) {
+        toast.success('Logged out successfully');
+        navigate("/");
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
   };
 
   return (
