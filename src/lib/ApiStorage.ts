@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from "@/data/models/Interfaces";
 
 
 
-const BASE_API_URL = "http://127.0.0.1:8000/api";
+const BASE_API_URL = 'https://elevate-be-django-production.up.railway.app/api'; 
 
 // Helper function to get session-specific storage
 // Uses sessionStorage for per-tab isolation instead of global localStorage

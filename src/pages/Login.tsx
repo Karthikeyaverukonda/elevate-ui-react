@@ -51,7 +51,7 @@ const Login = () => {
         signupData.append('image', userImage);
       }
 
-      fetch('http://127.0.0.1:8000/api/signup/', {
+      fetch('https://elevate-be-django-production.up.railway.app/api/signup/', {
         method: 'POST',
         body: signupData,
       })
@@ -86,7 +86,7 @@ const Login = () => {
         user_role = selectedRole
       }
       // Login API call
-      fetch('http://127.0.0.1:8000/api/login/', {
+      fetch('https://elevate-be-django-production.up.railway.app/api/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
